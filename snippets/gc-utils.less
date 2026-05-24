@@ -1,0 +1,16 @@
+// Always-applied правила, не зависящие от какой-либо группы.
+/* **Чё это и почему именно здесь:**
+   <gc-races>, <gc-custom-locations>, <gc-disabled-snippets> и <gc-basic-xml>
+   хранят base64-JSON-конфиги (внутренние таблицы в char-xml). По-умолчанию
+   custom-elements имеют display:inline и их textContent виден на листе как
+   длинная base64-строка под заметками. Потому что эти теги ВСЕГДА внутренние,
+   а значит никогда не должны рендериться. */
+
+& {
+  gc-races,
+  gc-custom-locations,
+  gc-disabled-snippets,
+  gc-basic-xml {
+    display: none !important;
+  }
+}

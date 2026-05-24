@@ -1,0 +1,126 @@
+// Стили modalPopup checkbox-list для управления сниппетами.
+/* Подаётся через <gc-style-less> + renderLess(less, '.mentor char-xml').
+   Цвета через var(--color-*) для адаптации к темам сайта. */
+
+& {
+  .gc-tog {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    font-size: 13px;
+    color: var(--color-text);
+
+    .gc-tog-header {
+      h2 {
+        margin: 0 0 4px 0;
+        font-size: 16px;
+        color: var(--color-text);
+      }
+      .gc-tog-hint {
+        margin: 0;
+        font-size: 12px;
+        opacity: 0.7;
+        line-height: 1.4;
+      }
+    }
+
+    .gc-tog-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .gc-tog-row {
+      border: 1px solid var(--color-border);
+      border-radius: 4px;
+      padding: 8px 10px;
+      background: var(--color-bg);
+      transition:
+        opacity 0.15s,
+        border-color 0.15s;
+
+      &.is-child {
+        margin-left: 24px;
+        border-left: 2px solid var(--color-main);
+        border-radius: 0 4px 4px 0;
+      }
+      &.is-child[data-depth="2"] {
+        margin-left: 48px;
+      }
+      &.is-child[data-depth="3"] {
+        margin-left: 72px;
+      }
+
+      &.cascade-off {
+        opacity: 0.55;
+        border-style: dashed;
+        .gc-tog-label {
+          cursor: not-allowed;
+        }
+      }
+
+      .gc-tog-label {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        cursor: pointer;
+        user-select: none;
+
+        .gc-tog-cb {
+          flex: 0 0 auto;
+          width: 16px;
+          height: 16px;
+          margin: 0;
+          cursor: pointer;
+          accent-color: var(--color-main);
+        }
+        .gc-tog-name {
+          font-weight: 600;
+          color: var(--color-text);
+        }
+        .gc-tog-id {
+          font-size: 11px;
+          opacity: 0.5;
+          font-family: monospace;
+        }
+      }
+
+      .gc-tog-desc {
+        margin-top: 4px;
+        margin-left: 24px;
+        font-size: 12px;
+        opacity: 0.75;
+        line-height: 1.4;
+      }
+      .gc-tog-req {
+        margin-top: 4px;
+        margin-left: 24px;
+        font-size: 11px;
+        color: var(--color-main);
+        font-style: italic;
+
+        &:empty {
+          display: none;
+        }
+      }
+    }
+
+    .gc-tog-footer {
+      border-top: 1px solid var(--color-border);
+      padding-top: 8px;
+
+      .gc-tog-status {
+        font-size: 12px;
+        &.changed {
+          color: var(--color-main);
+          b {
+            color: var(--color-text);
+          }
+        }
+        &.unchanged {
+          opacity: 0.5;
+        }
+      }
+    }
+  }
+}

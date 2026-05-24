@@ -1,0 +1,36 @@
+// LESS для бросков подлокаций 
+& {
+  &.gc-sub-location-enabled {
+    gc-sublocation {
+      display: block;
+      font-style: italic;
+      color: var(--color-text);
+      opacity: 0.7;
+      margin-top: 4px;
+      font-size: 90%;
+
+      &::before {
+        content: "🎲 ";
+        margin-right: 4px;
+        font-style: normal;
+      }
+      b {
+        color: var(--color-text);
+        opacity: 1;
+        font-weight: 600;
+      }
+      .sub-dr {
+        font-style: normal;
+        color: #8bb88b;
+        margin-left: 4px;
+      }
+      .sub-hint {
+        display: block;
+        font-size: 90%;
+        opacity: 0.85;
+        margin-left: 18px;
+        margin-top: 2px;
+      }
+    }
+  }
+}
