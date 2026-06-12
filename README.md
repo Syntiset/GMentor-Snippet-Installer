@@ -5,7 +5,7 @@
 <h1 align="center">GMentor Snippet Installer</h1>
 
 <p align="center">
-  <strong>Установка набора расширений на ваши кастомные листы <a href="https://gmentor.ru">gmentor.ru</a> в один клик.</strong>
+  <strong>Установка различных расширений и исправлений на <a href="https://gmentor.ru">gmentor.ru</a> в один клик.</strong>
 </p>
 
 <p align="center">
