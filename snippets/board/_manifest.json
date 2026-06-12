@@ -1,0 +1,21 @@
+{
+  "version": "1.0.0",
+  "snippets": [
+    {
+      "id": "initiative-tracker",
+      "name": "Трекер инициативы",
+      "version": "1.0.0",
+      "category": "feature",
+      "description": "Трекер инициативы. Поддерживается импорт персонажей с доски. Кнопка справа снизу, пока что фиксированная. Гибридное хранение: LocalStorage + опциональная синхронизация через ↑/↓, запись идёт в <gc-init-state>.",
+      "file": "initiative-tracker.js"
+    },
+    {
+      "id": "char-view-mode",
+      "name": "Селектор отображения персонажей",
+      "version": "1.0.0",
+      "category": "feature",
+      "description": "Селектор «Режим отображения» (Полный / Аватарка / Аватарка+имя) в меню-панели при ПКМ по блоку персонажа. State в классах, persistit через char-xml.",
+      "file": "char-view-mode.js"
+    }
+  ]
+}
