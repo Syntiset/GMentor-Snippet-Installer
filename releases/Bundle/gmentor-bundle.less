@@ -1,36 +1,19 @@
 /* === GMENTOR-LESS-BUNDLE-START === */
-/* Bundle version: 1.0.0 */
+/* Bundle version: 1.1.0+dev */
 
-
-/* === gc-utils.less-START === */
-// Always-applied правила, не зависящие от какой-либо группы.
-/* **Чё это и почему именно здесь:**
-   <gc-races>, <gc-custom-locations>, <gc-disabled-snippets> и <gc-basic-xml>
-   хранят base64-JSON-конфиги (внутренние таблицы в char-xml). По-умолчанию
-   custom-elements имеют display:inline и их textContent виден на листе как
-   длинная base64-строка под заметками. Потому что эти теги ВСЕГДА внутренние,
-   а значит никогда не должны рендериться. */
-
-& {
-  gc-races,
-  gc-custom-locations,
-  gc-disabled-snippets,
-  gc-basic-xml {
-    display: none !important;
-  }
-}
-/* === gc-utils.less-END === */
 
 /* === gc-toggler.less-START === */
-// Стили modalPopup checkbox-list для управления сниппетами.
+// Стили modalPopup для управления сниппетами.
 /* Подаётся через <gc-style-less> + renderLess(less, '.mentor char-xml').
-   Цвета через var(--color-*) для адаптации к темам сайта. */
+   Цвета через var(--color-*) для адаптации к темам сайта.
+   Категория-бейджи — outline-стиль (цвет = currentColor), без color-mix
+   (он не используется в char-стилях и не верифицирован в движковом renderLess). */
 
 & {
   .gc-tog {
     display: flex;
     flex-direction: column;
-    gap: 12px;
+    gap: 14px;
     font-size: 13px;
     color: var(--color-text);
 
@@ -51,33 +34,39 @@
     .gc-tog-list {
       display: flex;
       flex-direction: column;
-      gap: 8px;
+      gap: 6px;
     }
 
     .gc-tog-row {
       border: 1px solid var(--color-border);
-      border-radius: 4px;
-      padding: 8px 10px;
+      border-radius: 6px;
+      padding: 8px 12px;
       background: var(--color-bg);
       transition:
-        opacity 0.15s,
-        border-color 0.15s;
+        border-color 0.15s,
+        opacity 0.15s;
+
+      &:hover {
+        border-color: var(--color-main);
+      }
 
       &.is-child {
-        margin-left: 24px;
+        margin-left: 22px;
         border-left: 2px solid var(--color-main);
-        border-radius: 0 4px 4px 0;
       }
       &.is-child[data-depth="2"] {
-        margin-left: 48px;
+        margin-left: 44px;
       }
       &.is-child[data-depth="3"] {
-        margin-left: 72px;
+        margin-left: 66px;
       }
 
       &.cascade-off {
-        opacity: 0.55;
+        opacity: 0.5;
         border-style: dashed;
+        &:hover {
+          border-color: var(--color-border);
+        }
         .gc-tog-label {
           cursor: not-allowed;
         }
@@ -102,22 +91,22 @@
           font-weight: 600;
           color: var(--color-text);
         }
-        .gc-tog-id {
-          font-size: 11px;
-          opacity: 0.5;
-          font-family: monospace;
+        .gc-tog-badge {
+          margin-left: auto;
+          flex: 0 0 auto;
+          font-size: 10px;
+          font-weight: 600;
+          font-family: Consolas, monospace;
+          letter-spacing: 0.02em;
+          padding: 1px 8px;
+          border-radius: 10px;
+          white-space: nowrap;
+          border: 1px solid currentColor;
         }
       }
 
-      .gc-tog-desc {
-        margin-top: 4px;
-        margin-left: 24px;
-        font-size: 12px;
-        opacity: 0.75;
-        line-height: 1.4;
-      }
       .gc-tog-req {
-        margin-top: 4px;
+        margin-top: 5px;
         margin-left: 24px;
         font-size: 11px;
         color: var(--color-main);
@@ -127,11 +116,31 @@
           display: none;
         }
       }
+      .gc-tog-desc-toggle {
+        display: inline-block;
+        margin-top: 5px;
+        margin-left: 24px;
+        font-size: 11px;
+        color: var(--color-main);
+        cursor: pointer;
+        text-decoration: none;
+
+        &:hover {
+          text-decoration: underline;
+        }
+      }
+      .gc-tog-desc {
+        margin-top: 5px;
+        margin-left: 24px;
+        font-size: 12px;
+        opacity: 0.75;
+        line-height: 1.45;
+      }
     }
 
     .gc-tog-footer {
       border-top: 1px solid var(--color-border);
-      padding-top: 8px;
+      padding-top: 10px;
 
       .gc-tog-status {
         font-size: 12px;
@@ -146,9 +155,34 @@
         }
       }
     }
+
+    .gc-cat-fix      { color: var(--color-main); }
+    .gc-cat-feature  { color: var(--color-generator); }
+    .gc-cat-homebrew { color: var(--color-custom); }
+    .gc-cat-perk     { color: var(--color-template); }
+    .gc-cat-qol      { color: var(--color-coc); }
   }
 }
 /* === gc-toggler.less-END === */
+
+/* === gc-utils.less-START === */
+// Always-applied правила, не зависящие от какой-либо группы.
+/* **Чё это и почему именно здесь:**
+   <gc-races>, <gc-custom-locations>, <gc-disabled-snippets> и <gc-basic-xml>
+   хранят base64-JSON-конфиги (внутренние таблицы в char-xml). По-умолчанию
+   custom-elements имеют display:inline и их textContent виден на листе как
+   длинная base64-строка под заметками. Потому что эти теги ВСЕГДА внутренние,
+   а значит никогда не должны рендериться. */
+
+& {
+  gc-races,
+  gc-custom-locations,
+  gc-disabled-snippets,
+  gc-basic-xml {
+    display: none !important;
+  }
+}
+/* === gc-utils.less-END === */
 
 /* === hit-locations.less-START === */
 // LESS для кастомных зон попаданий.
@@ -570,43 +604,55 @@
 }
 /* === hit-locations.less-END === */
 
-/* === sub-location.less-START === */
-// LESS для бросков подлокаций 
-& {
-  &.gc-sub-location-enabled {
-    gc-sublocation {
-      display: block;
-      font-style: italic;
-      color: var(--color-text);
-      opacity: 0.7;
-      margin-top: 4px;
-      font-size: 90%;
+/* === dmg-scale.less-START === */
+// dmg-scale.less — намеренно без правил.
+/* Единственная графика этого сниппета, это подпись «Урон зависит от». Она видна только
+   в РЕДАКТОРЕ предмета (object-edit), который движок монтирует в <body>, ВНЕ char-xml. 
+   <gc-style-less> до <body> не достаёт, поэтому подпись задаётся глобальным <style> в 
+   <head> из dmg-scale.js (функция ensureLabelStyle).
 
-      &::before {
-        content: "🎲 ";
-        margin-right: 4px;
-        font-style: normal;
-      }
-      b {
-        color: var(--color-text);
-        opacity: 1;
-        font-weight: 600;
-      }
-      .sub-dr {
-        font-style: normal;
-        color: #8bb88b;
-        margin-left: 4px;
-      }
-      .sub-hint {
-        display: block;
-        font-size: 90%;
-        opacity: 0.85;
-        margin-left: 18px;
-        margin-top: 2px;
-      }
-    }
+   Файл оставлен пустым (а не удалён), чтобы readLess('dmg-scale.less') в
+   моём билдере не писал лишний раз ошибку. */
+/* === dmg-scale.less-END === */
+
+/* === cf-mod.less-START === */
+// cf-mod.less — стили для сниппета cf-mod.js.
+& {
+  .gc-cf-badge {
+    display: inline-block !important;
+    margin-left: 8px;
+    padding: 0 5px;
+    border-radius: 3px;
+    font-size: 11px;
+    font-weight: bold;
+    white-space: nowrap;
+    cursor: pointer;
+    background: rgba(78, 152, 224, .15);
+    color: var(--color-main, #4e98e0);
+  }
+  .gc-cf-badge.gc-cf-floored {
+    background: rgba(224, 78, 78, .18);
+    color: #d04545;
+  }
+  gc-cf-floor { display: none; }
+}
+/* === cf-mod.less-END === */
+
+/* === spell-attr.less-START === */
+// spell-attr.less — триггер выбора базового атрибута на строке заклинания.
+& {
+  .gc-spell-trig {
+    display: inline-block !important;
+    min-width: 30px;
+    margin: 0 6px;
+    text-align: center;
+    font-size: 11px;
+    cursor: pointer;
+    vertical-align: middle;
+    flex: 0 0 auto;
+    color: var(--color-main, #4e98e0);
   }
 }
-/* === sub-location.less-END === */
+/* === spell-attr.less-END === */
 
 /* === GMENTOR-LESS-BUNDLE-END === */

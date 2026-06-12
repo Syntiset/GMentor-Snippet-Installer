@@ -1,5 +1,5 @@
 { // === GMENTOR-BUNDLE-START ===
-// Bundle version: 1.0.0
+// Bundle version: 1.1.0+dev
 
 (function () {
   window.gcReRunHooks = window.gcReRunHooks || [];
@@ -16,7 +16,7 @@
 
 // ----- GC-TOGGLER (runtime) -----
 try {
-// Централизованный enable/disable для сниппетов. Подключать ПЕРВЫМ в <gc-script>.
+// Централизованный enable/disable для сниппетов. Подключать ПЕРВЫМ в <gc-script>. (v1.1.0)
 /* Что делает: читает <gc-disabled-snippets> (base64 JSON-массив id групп),
    ставит window.GC_DISABLED_SNIPPETS — это видят guard'ы в остальных сниппетах
    и пропускают свою инициализацию.
@@ -42,61 +42,20 @@ try {
   if (typeof gm !== "function" || typeof globalChar === "undefined") return;
   if (window.gcToggler && window.gcToggler.__bound) return;
 
-  /* Реестр групп сниппетов.
+  /* Реестр групп сниппетов — ТОЛЬКО структура (связи), без описаний.
+     label/desc/category каждого сниппета регистрирует САМ сниппет в
+     window.gcSnippetMeta[snippetId]; UI домержит их по snippets[0].
      requires — id групп, без которых эта не работает (cascade).
      parent   — UI-вложение (только визуально, отступ в checkbox-list). */
   var GROUPS = {
-    "engine-fixes": {
-      label: "Фиксы движка",
-      desc: "Обход бага modifyField(N, 0, multiply...) → строка \"N*0\" вместо 0. " +
-            "Без него ломаются DR/HP/FP-множители. Содержит: fix-multiply-zero.",
-      snippets: ["fix-multiply-zero"],
-      requires: [],
-      parent: null
-    },
-    "hit-locations": {
-      label: "Зоны попадания",
-      desc: "Кастомные зоны hit-locations: переименование, custom DR/toHit, " +
-            "3d6-таблица random hit, тултипы. UI-кнопка «⚔ Зоны».",
-      snippets: ["hit-locations"],
-      requires: ["engine-fixes"],
-      parent: null
-    },
-    "dr-inheritance": {
-      label: "DR-наследование",
-      desc: "Cascade DR от parent-зоны в подзоны; fullBody DR для root-level custom; " +
-            "компенсация двойного учёта fullBody. Без hit-locations работает безвредно " +
-            "(просто нет данных).",
-      snippets: ["dr-inheritance"],
-      requires: [], // hit-locations нужен для смысла, но noop без него — не блокируем
-      parent: "hit-locations"
-    },
-    "sub-location": {
-      label: "1d6 подлокации",
-      desc: "Доп. бросок 1d6 при попадании в Arm/Leg/Skull/Face → подлокация " +
-            "(предплечье/локоть/.../мозг). Дефолтные таблицы — самодостаточны; " +
-            "custom-таблицы из hit-locations + DR-наследование от dr-inheritance — опционально.",
-      snippets: ["sub-location"],
-      requires: [], // дополняют hit-locations/dr-inheritance, но работают и без них
-      parent: "hit-locations"
-    },
-    "perks": {
-      label: "Перки",
-      desc: "Custom-перки: strong-back (Крепкий хребет — подъёмная сила 6/10/20/30×ST).",
-      snippets: ["strong-back"],
-      requires: [],
-      parent: null
-    },
-    "qol": {
-      label: "Quality of Life",
-      desc: "Улучшения UX: ace-fold-all — автосворачивание всех блоков при открытии " +
-            "Ace-редактора <gc-script>/<gc-basic-xml> через foldAll() + " +
-            "marker-based fold для <gc-style-less> по START/END комментариям " +
-            "(с MutationObserver на gutter для persistent widget).",
-      snippets: ["ace-fold-all"],
-      requires: [],
-      parent: null
-    }
+    "engine-fixes":   { snippets: ["fix-multiply-zero"], requires: [],               parent: null },
+    "hit-locations":  { snippets: ["hit-locations"],     requires: ["engine-fixes"], parent: null },
+    "dr-inheritance": { snippets: ["dr-inheritance"],    requires: [],               parent: "hit-locations" }, // hit-locations нужен для смысла, но noop без него — не блокируем
+    "perks":          { snippets: ["strong-back"],       requires: [],               parent: null },
+    "qol":            { snippets: ["ace-fold-all"],      requires: [],               parent: null },
+    "dmg-scale":      { snippets: ["dmg-scale"],         requires: [],               parent: null },
+    "cf-mod":         { snippets: ["cf-mod"],            requires: [],               parent: null },
+    "spell-attr":     { snippets: ["spell-attr"],        requires: [],               parent: null },
   };
 
   function loadDisabledGroups() {
@@ -229,7 +188,7 @@ try {
       var copy = {};
       Object.keys(GROUPS).forEach(function (k) {
         var g = GROUPS[k];
-        copy[k] = { label: g.label, desc: g.desc, snippets: g.snippets.slice(), requires: g.requires.slice(), parent: g.parent || null };
+        copy[k] = { snippets: g.snippets.slice(), requires: g.requires.slice(), parent: g.parent || null };
       });
       return copy;
     },
@@ -270,7 +229,7 @@ try {
 
 // ----- GC-UTILS (системные хелперы) -----
 try {
-// Системный сниппет с общими хелперами для остальных. Подключать ВТОРЫМ.
+// Системный сниппет с общими хелперами для остальных. Подключать ВТОРЫМ. (v1.1.0)
 /* Что делает: экспортирует window.gcUtils и инициализирует общие namespace'ы.
    Все остальные сниппеты опираются на это — без gc-utils они упадут.
 
@@ -278,7 +237,7 @@ try {
      STD_ZONE_CODES                 — массив стандартных кодов зон.
      gcLog(level, msg[, err])       — console + window.gcErrors[].
      getToolLocation()              — код зоны из открытой модалки атаки
-                                      (учитывает loc='random').
+                                      (loc='random' → null: код неизвестен до броска).
      readDRFromDom(code)            — DR из <locations-list> по коду зоны.
      loadBase64Slot(tagName)        — JSON.parse(base64) из <tagName> слота.
      saveBase64Slot(tagName, value) — обратное (создаёт слот если нет).
@@ -325,7 +284,7 @@ try {
     var $sel = $("modalpopup #c_location option:selected, .tool-popup #c_location option:selected").first();
     if (!$sel.length) return null;
     var loc = $sel.attr("location");
-    if (loc === "random") return window.__gcLastRandomLocation || null;
+    if (loc === "random") return null;
     return loc || null;
   }
 
@@ -390,7 +349,7 @@ try {
 
 // ----- FIX-MULTIPLY-ZERO -----
 try {
-// Сниппет-фикс бага движка с multiply-модификаторами.
+// Сниппет-фикс бага движка с multiply-модификаторами. (v1.1.0)
 /* Что делает: когда у advantage/effect приходит multiply-модификатор
    со значением 0 (например levels=0 при формуле DR = base * levels),
    движок возвращает строку "N*0" вместо 0. Дальше parseFloat читает
@@ -406,6 +365,12 @@ try {
    Независим от других сниппетов. */
 
 (function () {
+  (window.gcSnippetMeta = window.gcSnippetMeta || {})["fix-multiply-zero"] = {
+    label: "Фиксы движка",
+    desc: "Обход бага modifyField(N, 0, multiply...) → строка \"N*0\" вместо 0. " +
+          "Без него ломаются DR/HP/FP-множители. Содержит: fix-multiply-zero.",
+    category: "fix"
+  };
   if (window.GC_DISABLED_SNIPPETS && window.GC_DISABLED_SNIPPETS.has("fix-multiply-zero")) return;
   window.gcInternal = window.gcInternal || { patched: {}, bound: {} };
   var gi = window.gcInternal;
@@ -462,10 +427,10 @@ try {
 
 // ----- HIT-LOCATIONS -----
 try {
-// Сниппет кастомных зон попаданий + UI-редактор «⚔ Зоны».
+// Сниппет кастомных зон попаданий + UI-редактор «⚔ Зоны». (v1.1.0)
 /* Что делает: позволяет переименовывать штатные зоны попаданий, править
-   to-hit / базовый DR, добавлять свои зоны и вложения, переписывать
-   3d6-таблицу случайного попадания, задавать тултипы и таблицы
+   to-hit / базовый DR, удобнее добавлять свои зоны и вложения, 
+   переписывать 3d6-таблицу случайного попадания, задавать тултипы и таблицы
    1d6-подлокаций (для sub-location).
 
    UI: кнопка «⚔ Зоны» в edit-mode тулбаре, рядом с </> — открывает
@@ -481,6 +446,12 @@ try {
                              parent / custom-зон. Без него DR родителей не
                              каскадится в подзоны => атаки игнорирят броню. */
 (function () {
+  (window.gcSnippetMeta = window.gcSnippetMeta || {})["hit-locations"] = {
+    label: "Зоны попадания",
+    desc: "Кастомные зоны hit-locations: переименование, custom DR/toHit, " +
+          "3d6-таблица random hit, тултипы. UI-кнопка «⚔ Зоны».",
+    category: "feature"
+  };
   if (window.GC_DISABLED_SNIPPETS && window.GC_DISABLED_SNIPPETS.has("hit-locations")) return;
   window.gcInternal = window.gcInternal || { patched: {}, bound: {} };
   var gi = window.gcInternal;
@@ -516,10 +487,9 @@ try {
   
   function applyAll(list) {
     ACTIVE_LIST = list;
-    patchToolsLocationsSelectTemplate(list);
     patchLocationHint(list);
     patchRandomLocation(list);
-    exportSubTables(list);
+    exportLocationsList(list);
     if (typeof window.charCalcDR === "function") {
       try { window.charCalcDR(); } catch (e) {}
     }
@@ -534,26 +504,7 @@ try {
     });
   }
 
-  /* Экспорт subTable полей зон в window.GC_SUB_LOCATION_TABLES_CUSTOM
-     (для sub-location) + плоский список всех зон в window.GC_HIT_LOCATIONS_LIST
-     (для resolve ссылок на подзону). Формат ячейки subTable:
-       - string (code)               — ссылка на подзону, name/dr/hint оттуда.
-       - object {name, dr?, hint?}   — ввод ручками. */
-  function exportSubTables(list) {
-    var tables = {};
-    list.forEach(function (loc) {
-      if (!loc || !loc.subTable || typeof loc.subTable !== "object") return;
-      var entries = {};
-      Object.keys(loc.subTable).forEach(function (k) {
-        var n = +k;
-        if (n < 1 || n > 6) return;
-        var cell = loc.subTable[k];
-        if (typeof cell === "string" && cell) entries[n] = cell;
-        else if (cell && typeof cell === "object" && cell.name) entries[n] = cell;
-      });
-      if (Object.keys(entries).length) tables[loc.code] = entries;
-    });
-    window.GC_SUB_LOCATION_TABLES_CUSTOM = tables;
+  function exportLocationsList(list) {
     window.GC_HIT_LOCATIONS_LIST = list;
   }
 
@@ -587,37 +538,40 @@ try {
     window.charCalcDR = function () {
       if (window.__gcLock) return _orig.apply(this, arguments);
       window.__gcLock = true;
-      var $ll = gm("locations-list");
-      var savedParents = {};
-      $ll.find("location > location").each(function () {
-        var code = $(this).attr("name");
-        var pCode = $(this).parent().attr("name");
-        if (code && pCode) savedParents[code] = pCode;
-      }).appendTo($ll);
-      var r = _orig.apply(this, arguments);
       try {
-        $ll.find("dr").each(function () {
-          var t = $(this).text();
-          if (t.indexOf("*") === -1) return;
-          var p = t.split("*");
-          if (parseFloat(p[0]) === 0 || parseFloat(p[1]) === 0) $(this).text("0");
-        });
-        applyCustomLocations(ACTIVE_LIST);
-        applyToHitAndRoll(ACTIVE_LIST);
-        addBaseDR(ACTIVE_LIST);
-        updateLocationAttributes(ACTIVE_LIST);
-        var listed = {};
-        ACTIVE_LIST.forEach(function (l) { listed[l.code] = true; });
-        Object.keys(savedParents).forEach(function (code) {
-          if (listed[code]) return;
-          var $node = $ll.children("location[name='" + code + "']");
-          if (!$node.length) return;
-          var $parent = $ll.find("location[name='" + savedParents[code] + "']").first();
-          if ($parent.length) $parent.append($node);
-        });
-      } catch (e) {}
-      window.__gcLock = false;
-      return r;
+        var $ll = gm("locations-list");
+        var savedParents = {};
+        $ll.find("location > location").each(function () {
+          var code = $(this).attr("name");
+          var pCode = $(this).parent().attr("name");
+          if (code && pCode) savedParents[code] = pCode;
+        }).appendTo($ll);
+        var r = _orig.apply(this, arguments);
+        try {
+          $ll.find("dr").each(function () {
+            var t = $(this).text();
+            if (t.indexOf("*") === -1) return;
+            var p = t.split("*");
+            if (parseFloat(p[0]) === 0 || parseFloat(p[1]) === 0) $(this).text("0");
+          });
+          applyCustomLocations(ACTIVE_LIST);
+          applyToHitAndRoll(ACTIVE_LIST);
+          addBaseDR(ACTIVE_LIST);
+          updateLocationAttributes(ACTIVE_LIST);
+          var listed = {};
+          ACTIVE_LIST.forEach(function (l) { listed[l.code] = true; });
+          Object.keys(savedParents).forEach(function (code) {
+            if (listed[code]) return;
+            var $node = $ll.children("location[name='" + code + "']");
+            if (!$node.length) return;
+            var $parent = $ll.find("location[name='" + savedParents[code] + "']").first();
+            if ($parent.length) $parent.append($node);
+          });
+        } catch (e) {}
+        return r;
+      } finally {
+        window.__gcLock = false;
+      }
     };
   }
 
@@ -734,7 +688,7 @@ try {
         (window.__gcLocHintList || []).forEach(function (loc) {
           if (!loc.hint) return;
           var cls = "location-note-" + loc.code;
-          if (!$hints.find("." + cls).length) $hints.append("<span class='" + cls + "' style='display:none'>" + loc.hint + "</span>");
+          if (!$hints.find("." + cls).length) $("<span style='display:none'></span>").addClass(cls).text(loc.hint).appendTo($hints);
         });
       }
       return orig ? orig.apply(this, arguments) : undefined;
@@ -758,12 +712,15 @@ try {
   function patchRandomLocation(list) {
     if (!gi.patched.getRandomLocation) {
       gi.patched.getRandomLocation = true;
-      window.getRandomLocation = function () {
+      var fn = function () {
         var r = 0; for (var i = 0; i < 3; i++) r += 1 + Math.floor(Math.random() * 6);
         var ov = window.__gcLocRolls || {};
         if (ov[r]) return ov[r];
         return defaultLocationForRoll(r);
       };
+      var s = window.__gcRandOrig;
+      if (s && typeof s.getRandomLocation === 'function') s.getRandomLocation = fn;
+      else window.getRandomLocation = fn;
     }
     window.__gcLocRolls = {};
     list.forEach(function (l) {
@@ -790,7 +747,7 @@ try {
     var $topPanel = $("<div class='editor-toolbar' style='overflow:hidden;'></div>").appendTo($container);
     $topPanel.append("<h2 style='float:left; margin:0; border:none;'>Редактор зон попаданий</h2>");
     $("<button style='float:right;'>Документация</button>").on("click", function() { $container.find('help').toggleClass('expand'); }).appendTo($topPanel);
-    var $help = $("<help></help>").html(`<div><h2>Как это работает:</h2>• Для <b>правки</b> стандартной зоны впишите её Код (ID) и добавьте нужные поля через меню <b>+</b>.<br>• Для <b>создания</b> новой зоны нажмите кнопку внизу списка и включите <b>Новая зона</b>.<br>• <b>Родитель (ID)</b> — ID зоны, внутрь которой будет вложена текущая.<br>• <b>Является родителем</b> — помечает зону как контейнер для других подлокаций.</div><div><h3>Стандартные коды зон:</h3>skull, face, eyes, neck, torso, groin, arms, hands, legs, feet</div><div><h3>Подлокации:</h3><b>arms</b>: shoulders, upper arms, elbows, forearms<br><b>legs</b>: thighs, knees, shins<br><b>torso</b>: chest, abdomen</div><div><h3>Подлокации (1d6):</h3>Поле <b>Подлокации (1d6)</b> у любой зоны — таблица для дополнительного броска 1d6 при попадании (через сниппет <b>sub-location.js</b>). Каждая из 6 ячеек — либо ссылка на дочернюю зону (с тем же <b>Родителем</b>), либо свободный ввод (имя/DR/hint). Кнопка <b>+</b> справа создаёт новую дочернюю custom-зону и сразу привязывает её к ячейке. <b>DR прибавляется к параметру dr движковой функции damageRoll</b> — реально вычитается из урона (с учётом drDivisor) и попадает в <code>&lt;mod&gt;-NDR&lt;/mod&gt;</code> результата. Кастомные значения переопределяют дефолтные ячейки arms/legs/skull/face поштучно: задайте только нужные строки, остальные возьмутся из дефолта.</div><div><h3>Специфические коды:</h3>vitals, spine, ear, jaw, nose, wings, tail, weapon, bigjoint, smalljoint, limbvenus, neckvenus</div><div style="margin-bottom:20px; padding:12px; background:rgba(66,139,202,0.1); border-radius:6px; border:1px solid rgba(66,139,202,0.2);"><label style="cursor:pointer; display:flex; align-items:center; gap:10px; margin:0;"><input type="checkbox" id="gc-hl-show-sub-meta" ${localStorage.getItem("gcHlShowSubMeta") === "yes" ? "checked" : ""} style="margin:0; width:16px; height:16px;"><b style="font-size:13px;">Показывать параметры подлокаций на листе</b></label></div>`).appendTo($container);
+    var $help = $("<help></help>").html(`<div><h2>Как это работает:</h2>• Для <b>правки</b> стандартной зоны впишите её Код (ID) и добавьте нужные поля через меню <b>+</b>.<br>• Для <b>создания</b> новой зоны нажмите кнопку внизу списка и включите <b>Новая зона</b>.<br>• <b>Родитель (ID)</b> — ID зоны, внутрь которой будет вложена текущая.<br>• <b>Является родителем</b> — помечает зону как контейнер для других подлокаций.</div><div><h3>Стандартные коды зон:</h3>skull, face, eyes, neck, torso, groin, arms, hands, legs, feet</div><div><h3>Подлокации:</h3><b>arms</b>: shoulders, upper arms, elbows, forearms<br><b>legs</b>: thighs, knees, shins<br><b>torso</b>: chest, abdomen</div><div><h3>Подлокации (1d6):</h3>Поле <b>Подлокации (1d6)</b> — справочная таблица 1d6 у зоны: каждая из 6 ячеек — либо ссылка на дочернюю зону (с тем же <b>Родителем</b>), либо свободный ввод (имя/DR/hint). Кнопка <b>+</b> справа создаёт новую дочернюю custom-зону и сразу привязывает её к ячейке. В бросок атаки эти таблицы сейчас не подставляются: доп. бросок 1d6 на подлокацию делает all-сниппет «Подлокации» (вкладка «Все листы») по своим таблицам — LT100 либо настраиваемым в его меню.</div><div><h3>Специфические коды:</h3>vitals, spine, ear, jaw, nose, wings, tail, weapon, bigjoint, smalljoint, limbvenus, neckvenus</div><div style="margin-bottom:20px; padding:12px; background:rgba(66,139,202,0.1); border-radius:6px; border:1px solid rgba(66,139,202,0.2);"><label style="cursor:pointer; display:flex; align-items:center; gap:10px; margin:0;"><input type="checkbox" id="gc-hl-show-sub-meta" ${localStorage.getItem("gcHlShowSubMeta") === "yes" ? "checked" : ""} style="margin:0; width:16px; height:16px;"><b style="font-size:13px;">Показывать параметры подлокаций на листе</b></label></div>`).appendTo($container);
 
     $container.find("#gc-hl-show-sub-meta").on("change", function() {
       localStorage.setItem("gcHlShowSubMeta", this.checked ? "yes" : "no");
@@ -823,12 +780,13 @@ try {
       $listWrap.empty();
       list.forEach(function(loc, idx) {
         var $zone = $("<div class='zone-block'></div>").appendTo($listWrap);
-        var isOpen = openZones.has(idx);
-        var $header = $(`<div class='zone-header'><i class="fa fa-caret-${isOpen ? 'down' : 'right'}" style="margin-right:12px; color:#ccc"></i><span class='zone-name'>${loc.name || loc.code || 'Без названия'}</span><div class='node-actions'><i class="fa fa-plus-circle" title="Добавить поле"></i><i class="fa fa-trash" title="Удалить зону"></i></div></div>`).appendTo($zone);
+        var isOpen = openZones.has(loc.code);
+        var $header = $(`<div class='zone-header'><i class="fa fa-caret-${isOpen ? 'down' : 'right'}" style="margin-right:12px; color:#ccc"></i><span class='zone-name'></span><div class='node-actions'><i class="fa fa-plus-circle" title="Добавить поле"></i><i class="fa fa-trash" title="Удалить зону"></i></div></div>`).appendTo($zone);
+        $header.find('.zone-name').text(loc.name || loc.code || 'Без названия');
         $header.on("click", function(e) {
           if ($(e.target).hasClass('fa-plus-circle')) { showAddMenu($(e.target), idx); e.stopPropagation(); return; }
-          if ($(e.target).hasClass('fa-trash')) { if(confirm("Удалить зону?")) { list.splice(idx, 1); if (typeof window.charCalcDR === "function") window.charCalcDR(); render(); } e.stopPropagation(); return; }
-          isOpen = !isOpen; if (isOpen) openZones.add(idx); else openZones.delete(idx); render();
+          if ($(e.target).hasClass('fa-trash')) { if(confirm("Удалить зону?")) { openZones.delete(loc.code); list.splice(idx, 1); render(); } e.stopPropagation(); return; }
+          isOpen = !isOpen; if (isOpen) openZones.add(loc.code); else openZones.delete(loc.code); render();
         });
         if (isOpen) {
           var $body = $("<div class='zone-body'></div>").appendTo($zone);
@@ -845,7 +803,8 @@ try {
       });
       $("<div style='text-align:center; padding:10px;'><button>+ Создать новую зону</button></div>").on("click", function() {
           var nextId = 1; while(list.some(l => l.code === "custom_" + nextId)) nextId++;
-          list.push({ code: "custom_" + nextId, custom: true, dr: 0 }); openZones.add(list.length - 1); render();
+          var newCode = "custom_" + nextId;
+          list.push({ code: newCode, custom: true, dr: 0 }); openZones.add(newCode); render();
       }).appendTo($listWrap);
     }
 
@@ -938,7 +897,7 @@ try {
             list.push({ code: newCode, custom: true, dr: 0, parent: loc.code });
             loc.subTable = loc.subTable || {};
             loc.subTable[roll] = newCode;
-            openZones.add(list.length - 1);
+            openZones.add(newCode);
             render();
           })
           .appendTo($row);
@@ -995,7 +954,7 @@ try {
             else if (key === "custom" || key === "isParent" || key === "noInheritDR") initVal = true;
             else initVal = "";
             list[idx][key] = initVal;
-            openZones.add(idx); render(); if (typeof window.charCalcDR === "function") window.charCalcDR();
+            openZones.add(loc.code); render();
           }).appendTo($popup);
         }
       });
@@ -1004,13 +963,15 @@ try {
 
     function deleteField(idx, key) {
       delete list[idx][key];
-      if (typeof window.charCalcDR === "function") window.charCalcDR();
     }
 
     function updateValue(idx, key, val) {
       var loc = list[idx];
       if (!loc || !key) return;
-      if (key === "code") loc.code = val;
+      if (key === "code") {
+        if (openZones.has(loc.code)) { openZones.delete(loc.code); openZones.add(val); }
+        loc.code = val;
+      }
       else if (key === "name") loc.name = (val === null || val === "") ? null : val;
       else if (key === "toHit") loc.toHit = (val === "" || val === null) ? null : +val;
       else if (key === "dr") loc.dr = (val === "" || val === null) ? null : +val;
@@ -1019,12 +980,11 @@ try {
       else if (key === "custom") loc.custom = (val === "yes" || val === "Да" || val === true);
       else if (key === "noInheritDR") loc.noInheritDR = (val === "yes" || val === "Да" || val === true);
       else if (key === "hint") loc.hint = (val === null || val === "") ? null : val;
-      else if (key === "roll") { 
-        if (Array.isArray(val)) loc.roll = val; 
-        else if (!val) loc.roll = null; 
-        else loc.roll = val.split(/[\s,]+/).map(s => +s.trim()).filter(n => !isNaN(n)); 
+      else if (key === "roll") {
+        if (Array.isArray(val)) loc.roll = val;
+        else if (!val) loc.roll = null;
+        else loc.roll = val.split(/[\s,]+/).map(s => +s.trim()).filter(n => !isNaN(n));
       }
-      if (typeof window.charCalcDR === "function") window.charCalcDR();
     }
   }
 })();
@@ -1040,7 +1000,7 @@ try {
 
 // ----- DR-INHERITANCE -----
 try {
-// Сниппет DR-наследования для иерархии зон + фиксы движкового DR-pipeline.
+// Сниппет DR-наследования для иерархии зон + фиксы движкового DR-pipeline. (v1.1.0)
 /* Что делает: каскадирует DR родительской зоны в её подзоны (B398-399).
    Без этого:  ставишь броню на торс — а в abdomen/vitals/groin DR=0 при попадании.
    С этим:     дочерки наследуют DR родителя и видно прямо в блоке локаций.
@@ -1057,17 +1017,21 @@ try {
        применил к ним fullBody напрямую, а cascade добавил бы его ещё раз
        через parent.total. Вычитает заранее через adjustStdSubzoneDR.
 
-   Обёртка damageRoll: при «DR цели=0» (default поле в модалке атаки) читает
-   DR выбранной зоны из DOM — там уже cascade применён. При DR цели>0 —
-   юзер явно задал DR внешней цели, а значит сниппет не трогает его.
-
    Зависимость: hit-locations (читает window.GC_HIT_LOCATIONS_LIST).
 
    Порядок подключения:
-     fix-multiply-zero → hit-locations → dr-inheritance → sub-location
+     fix-multiply-zero → hit-locations → dr-inheritance
    dr-inheritance оборачивает charCalcDR ПОВЕРХ hit-locations — чтобы видеть
-   уже созданные custom-зоны. sub-location.js идёт ПОСЛЕ, читает наследованный DR. */
+   уже созданные custom-зоны. (all-сниппет «Подлокации», если установлен,
+   читает уже наследованный DR.) */
 (function () {
+  (window.gcSnippetMeta = window.gcSnippetMeta || {})["dr-inheritance"] = {
+    label: "DR-наследование",
+    desc: "Cascade DR от parent-зоны в подзоны; fullBody DR для root-level custom; " +
+          "компенсация двойного учёта fullBody. Без hit-locations работает безвредно " +
+          "(просто нет данных).",
+    category: "feature"
+  };
   if (window.GC_DISABLED_SNIPPETS && window.GC_DISABLED_SNIPPETS.has("dr-inheritance")) return;
   window.gcInternal = window.gcInternal || { patched: {}, bound: {} };
   var gi = window.gcInternal;
@@ -1103,21 +1067,6 @@ try {
       total += amt;
     });
     return total;
-  }
-
-  function getToolLocation() {
-    var $sel = $("modalpopup #c_location option:selected, .tool-popup #c_location option:selected").first();
-    if (!$sel.length) return null;
-    var loc = $sel.attr("location");
-    if (loc === "random") return window.__gcLastRandomLocation || null;
-    return loc || null;
-  }
-
-  function readDRFromDom(code) {
-    var $node = $("locations-list location[name='" + code + "']").first();
-    if (!$node.length) return 0;
-    var v = parseInt($node.children("dr").first().text(), 10);
-    return isFinite(v) ? v : 0;
   }
 
   function adjustStdSubzoneDR(list) {
@@ -1188,20 +1137,6 @@ try {
     };
   }
 
-  /* damageRoll при dr=0 (default DR цели в модалке) — читать DR зоны
-     из DOM, где cascade уже применён. При dr>0 — юзер ввёл override. */
-  if (!gi.patched.drInhDamageRoll && typeof window.damageRoll === "function") {
-    gi.patched.drInhDamageRoll = true;
-    var _origDamageRoll = window.damageRoll;
-    window.damageRoll = function (damage, outputPlace, dr, cb) {
-      if (!dr) {
-        var loc = getToolLocation();
-        if (loc) dr = readDRFromDom(loc);
-      }
-      return _origDamageRoll.call(this, damage, outputPlace, dr, cb);
-    };
-  }
-
   /* Если hit-locations уже отработал applyAll до загрузки — DOM есть,
      но cascade не применён. Форс один charCalcDR прямо сейчас. */
   if (typeof window.charCalcDR === "function") {
@@ -1218,176 +1153,20 @@ try {
   if (window.console) console.error("[gc-bundle:" + "DR-INHERITANCE" + "]", gcErr);
 }
 
-// ----- SUB-LOCATION -----
-try {
-// Сниппет для дополнительного броска 1d при попадании по конечностям.
-/* Что делает: после случайного броска попадания в Arm / Leg / Skull / Face
-   (или в любую зону с настроенной табличкой «Подлокации (1d6)» в редакторе
-   «⚔ Зоны») бросает ещё 1d и дописывает в результат атаки конкретную
-   подлокацию: предплечье / локоть / плечо / бедро / колено / голень / мозг.
-  
-   Дефолтные таблицы (B552 + хоумрул для головы):
-     arms:  1-3 предплечье, 4 локоть, 5 верх руки, 6 плечо
-     legs:  1-3 голень, 4 колено, 5-6 бедро
-     skull: 1 мозг (vitals), 2-6 череп
-     face:  1 мозг (vitals), 2-6 лицо
-   Если в редакторе «⚔ Зоны» заданы свои таблицы — используются они.
-  
-   Если у подлокации задан DR — он автоматически прибавляется к броску
-   повреждений (через обёртку damageRoll), если раскомментить в конце.
-  
-   Подключать ПОСЛЕ hit-locations.js (читает оттуда кастомные таблицы и зоны). */
-
-(function () {
-  if (window.GC_DISABLED_SNIPPETS && window.GC_DISABLED_SNIPPETS.has("sub-location")) return;
-  window.gcInternal = window.gcInternal || { patched: {}, bound: {} };
-  var gi = window.gcInternal;
-
-  /* Дефолтные таблицы. Формат ячейки: { name, dr?, hint? }.
-     Либо править ручками здесь, либо переопределять через редактор «⚔ Зоны»
-     в поле «Подлокации (1d6)» — оттуда custom-таблица перебивает default. */
-  var DEFAULTS = {
-    arms: {
-      1: { name: "предплечье" }, 2: { name: "предплечье" }, 3: { name: "предплечье" },
-      4: { name: "локоть" }, 5: { name: "верхняя часть руки" }, 6: { name: "плечо" }
-    },
-    legs: {
-      1: { name: "голень" }, 2: { name: "голень" }, 3: { name: "голень" },
-      4: { name: "колено" }, 5: { name: "бедро" }, 6: { name: "бедро" }
-    },
-    skull: {
-      1: { name: "мозг (vitals)" }, 2: { name: "череп" }, 3: { name: "череп" },
-      4: { name: "череп" }, 5: { name: "череп" }, 6: { name: "череп" }
-    },
-    face: {
-      1: { name: "мозг (vitals)" }, 2: { name: "лицо" }, 3: { name: "лицо" },
-      4: { name: "лицо" }, 5: { name: "лицо" }, 6: { name: "лицо" }
-    }
-  };
-
-  function getCustomTables() { return window.GC_SUB_LOCATION_TABLES_CUSTOM || {}; }
-  function getZonesList() { return window.GC_HIT_LOCATIONS_LIST || []; }
-
-  function hasSubTable(code) {
-    if (!code) return false;
-    return !!(DEFAULTS[code] || getCustomTables()[code]);
-  }
-
-  function resolveRef(code) {
-    var list = getZonesList();
-    for (var i = 0; i < list.length; i++) {
-      if (list[i] && list[i].code === code) {
-        var z = list[i];
-        return { name: z.name || z.code, dr: z.dr, hint: z.hint };
-      }
-    }
-    return null;
-  }
-
-  /* Custom-ячейка может быть string (code дочерней зоны → resolveRef)
-     или object {name, dr?, hint?}. Битая string → fallthrough на default,
-     чтобы атака не молчала. */
-  function getCell(parent, roll) {
-    var custom = getCustomTables()[parent];
-    if (custom && custom[roll] != null) {
-      var cell = custom[roll];
-      if (typeof cell === "string" && cell) {
-        var resolved = resolveRef(cell);
-        if (resolved && resolved.name) return resolved;
-      } else if (cell && typeof cell === "object" && cell.name) {
-        return cell;
-      }
-    }
-    var def = DEFAULTS[parent];
-    if (def && def[roll] && def[roll].name) return def[roll];
-    return null;
-  }
-
-  function rollSubLocation(parent) {
-    if (!hasSubTable(parent)) return null;
-    var r = 1 + Math.floor(Math.random() * 6);
-    var cell = getCell(parent, r);
-    if (!cell) return null;
-    return { parent: parent, name: cell.name, dr: cell.dr, hint: cell.hint, roll: r };
-  }
-
-  function getToolLocation() {
-    var $sel = $("modalpopup #c_location option:selected, .tool-popup #c_location option:selected").first();
-    if (!$sel.length) return null;
-    var loc = $sel.attr("location");
-    if (loc === "random") return window.__gcLastRandomLocation || null;
-    return loc || null;
-  }
-
-  function ensureSubLocation(loc) {
-    if (!hasSubTable(loc)) return null;
-    if (window.__gcSubLocation && window.__gcSubLocation.parent === loc) {
-      return window.__gcSubLocation;
-    }
-    var sub = rollSubLocation(loc);
-    window.__gcSubLocation = sub;
-    return sub;
-  }
-  if (!gi.patched.subLocRand && typeof window.getRandomLocation === "function") {
-    gi.patched.subLocRand = true;
-    var _origRand = window.getRandomLocation;
-    window.getRandomLocation = function () {
-      var code = _origRand.apply(this, arguments);
-      window.__gcLastRandomLocation = code;
-      window.__gcSubLocation = hasSubTable(code) ? rollSubLocation(code) : null;
-      return code;
-    };
-  }
-
-  if (!gi.patched.subLocDamageRoll && typeof window.damageRoll === "function") {
-    gi.patched.subLocDamageRoll = true;
-    var _origDR = window.damageRoll;
-    window.damageRoll = function (damage, outputPlace, dr, cb) {
-      var loc = getToolLocation();
-      var sub = loc ? ensureSubLocation(loc) : null;
-      if (sub && sub.dr != null) dr = (dr || 0) + sub.dr;
-      return _origDR.call(this, damage, outputPlace, dr, cb);
-    };
-  }
-
-  if (!gi.patched.subLocTexts && typeof window.toolLocationsTexts === "function") {
-    gi.patched.subLocTexts = true;
-    var _origT = window.toolLocationsTexts;
-    window.toolLocationsTexts = function (damage, location, specialTargetType) {
-      var res = _origT.apply(this, arguments);
-      var sub = ensureSubLocation(location);
-      if (sub) {
-        window.__gcSubLocation = null;
-        var DICE = ['⚀', '⚁', '⚂', '⚃', '⚄', '⚅'];
-        var face = DICE[sub.roll - 1] || sub.roll;
-        var bt = "<span style='display:none'>`</span>";
-        var html = "Подлокация (" + face + " = " + bt + sub.roll + bt + "): <b>" + sub.name + "</b>";
-		// if (sub.dr != null) html += " <span class='sub-dr'>[+" + sub.dr + " DR]</span>";
-        if (sub.hint) html += "<br><span class='sub-hint'>" + sub.hint + "</span>";
-        res += "<br><gc-sublocation>" + html + "</gc-sublocation>";
-      }
-      return res;
-    };
-  }
-})();
-} catch (gcErr) {
-  (window.gcErrors = window.gcErrors || []).push({
-    section: "SUB-LOCATION",
-    msg: String(gcErr && gcErr.message || gcErr),
-    stack: gcErr && gcErr.stack,
-    at: Date.now()
-  });
-  if (window.console) console.error("[gc-bundle:" + "SUB-LOCATION" + "]", gcErr);
-}
-
 // ----- STRONG-BACK (perk) -----
 try {
-//  Сниппет для преимущества Strong Back (Крепкий хребет): 6*ST / 10*ST / 20*ST / 30*ST
+//  Сниппет для преимущества Strong Back (Крепкий хребет): 6*ST / 10*ST / 20*ST / 30*ST (v1.1.0)
 /*  Срабатывает, если у персонажа есть активное преимущество c каноническим именем
     "Strong Back" из Fallout Revised. Отключение через UI (stopped='yes') автоматически
     возвращает штатный расчёт ST. Может конфликтовать с KYOS.*/
 
 (function () {
+  (window.gcSnippetMeta = window.gcSnippetMeta || {})["strong-back"] = {
+    label: "Крепкий хребет (Fallout Revised)",
+    desc: "Strong Back (Крепкий хребет — подъёмная сила 6/10/20/30×ST). При добавлении преимущества " +
+	      "с названием Strong Back меняется расчёт перегруза. Перк из Fallout Revised.",
+    category: "perk"
+  };
   if (window.GC_DISABLED_SNIPPETS && window.GC_DISABLED_SNIPPETS.has("strong-back")) return;
   window.gcInternal = window.gcInternal || { patched: {}, bound: {} };
   if (window.gcInternal.patched.strongBack) return;
@@ -1438,7 +1217,7 @@ try {
 
 // ----- ACE-FOLD-ALL (QoL) -----
 try {
-// QoL для Ace-редакторов <gc-script> / <gc-style-less>: автосворачивание bundle.
+// QoL для Ace-редакторов <gc-script> / <gc-style-less>: автосворачивание bundle. (v1.1.0)
 /* Что делает: при открытии Ace-редактора (кнопки SCRIPT и CSS/LESS)
    автоматически сворачивает блоки bundle по маркерам:
      // === SECTION-START ===      ↔   // === SECTION-END ===  		(для JS)
@@ -1454,8 +1233,17 @@ try {
    разворачивает блок назад (стандартный Ace fold-widget этого не делает,
    т.к. мои folds сделаны через addFold напрямую, минуя mode.foldingRules). */
 (function () {
+  (window.gcSnippetMeta = window.gcSnippetMeta || {})["ace-fold-all"] = {
+    label: "Quality of Life",
+    desc: "Улучшения UX: ace-fold-all — автосворачивание всех блоков при открытии " +
+          "Ace-редактора <gc-script>/<gc-basic-xml> через foldAll() + marker-based fold " +
+          "для <gc-style-less> по START/END комментариям (с MutationObserver на gutter " +
+          "для persistent widget).",
+    category: "qol"
+  };
   if (window.GC_DISABLED_SNIPPETS && window.GC_DISABLED_SNIPPETS.has("ace-fold-all")) return;
   window.gcInternal = window.gcInternal || { patched: {}, bound: {} };
+  var gi = window.gcInternal;
   if (window.gcInternal.patched.aceFoldAll || typeof window.createMentorAce !== "function") return;
   window.gcInternal.patched.aceFoldAll = true;
 
@@ -1476,8 +1264,20 @@ try {
     console.log.apply(console, args);
   }
 
+  var gcGutterRegistry = (gi.bound.aceGutters = gi.bound.aceGutters || []);
+  function sweepDetachedGutters() {
+    for (var i = gcGutterRegistry.length - 1; i >= 0; i--) {
+      var rec = gcGutterRegistry[i];
+      if (!rec.el || !document.contains(rec.el)) {
+        if (rec.cleanup) { try { rec.cleanup(); } catch (e) {} }
+        gcGutterRegistry.splice(i, 1);
+      }
+    }
+  }
+
   var origCreate = window.createMentorAce;
   window.createMentorAce = function (objId, mode) {
+    sweepDetachedGutters();
     var editor = origCreate.apply(this, arguments);
     var skipNames = skipNamesForMode(mode);
     setTimeout(function () { try { applyInitialFolds(editor, skipNames, mode); } catch (e) { dbg("initialFolds err", e); } }, 150);
@@ -1608,8 +1408,15 @@ try {
           dbg("cleanup done");
         } catch (e) {}
       };
+      var rec = { el: gutterEl, cleanup: cleanup };
+      gcGutterRegistry.push(rec);
+      var unregister = function () {
+        cleanup();
+        var idx = gcGutterRegistry.indexOf(rec);
+        if (idx >= 0) gcGutterRegistry.splice(idx, 1);
+      };
       if (typeof editor.on === "function") {
-        try { editor.on("destroy", cleanup); } catch (e) {}
+        try { editor.on("destroy", unregister); } catch (e) {}
       }
     }, POLL_MS);
   }
@@ -1624,9 +1431,446 @@ try {
   if (window.console) console.error("[gc-bundle:" + "ACE-FOLD-ALL (QoL)" + "]", gcErr);
 }
 
+// ----- DMG-SCALE (урон от характеристики) -----
+try {
+// Урон оружия от выбранной характеристики (v1.1.0)
+/* Урон скейлится не от ST, а от выбранной характеристики (IQ/DX/Will/...) — сниппет,
+   который хорошо подойдёт для магических артефактов.
+
+   Добавляет в меню редактирования оружия дополнительный пункт «Зависимость урона».
+   При выборе добавляет «Урон зависит от» с возможностью выбора характеристики на 
+   выбор: ST (обычно по-умолчанию), DX, IQ, HT, HP, FP, Will, Per. */
+(function () {
+  'use strict';
+  (window.gcSnippetMeta = window.gcSnippetMeta || {})['dmg-scale'] = {
+    label: "Скейл урона от характеристики",
+    desc: "Оружие наносит урон от выбранной характеристики (IQ/DX/Will/...), а не только " +
+          "от ST. Подходит для магических артефактов. Пункт «Зависимость урона» в меню " +
+		  "редактирования оружия.",
+    category: "feature"
+  };
+  if (window.GC_DISABLED_SNIPPETS && window.GC_DISABLED_SNIPPETS.has('dmg-scale')) return;
+  window.gcInternal = window.gcInternal || { patched: {}, bound: {} };
+  var gi = window.gcInternal;
+
+  var WSEL = 'ranged_weapon, ranged_weapon-tag, melee_weapon, melee_weapon-tag';
+  var DMARK = 'gc-dmg-default';
+  function isDmgDefault() { return $(this).hasClass(DMARK) || $(this).attr('gc-dmg') != null; }
+
+  function wrapGBD() {
+    if (window.__gcGbdWrapped) return;
+    if (typeof window.getBestDefault !== 'function') return;
+    var orig = window.getBestDefault;
+    window.__gcGbdOrig = orig;
+    window.getBestDefault = function (obj, urv) {
+      var saved = [];
+      try {
+        $(obj).find('>default').filter(isDmgDefault).each(function () {
+          saved.push({ el: this, p: this.parentNode, n: this.nextSibling });
+          if (this.parentNode) this.parentNode.removeChild(this);
+        });
+      } catch (e) {}
+      var r;
+      try { r = orig.call(this, obj, urv); }
+      finally {
+        saved.forEach(function (s) {
+          if (s.n && s.n.parentNode === s.p) s.p.insertBefore(s.el, s.n); else s.p.appendChild(s.el);
+        });
+      }
+      return r;
+    };
+    window.__gcGbdWrapped = true;
+  }
+
+  var ATTR_NAMES = { st: 'Силы (ST)', dx: 'Ловкости (DX)', iq: 'Интеллекта (IQ)', ht: 'Здоровья (HT)', hp: 'HP', fp: 'FP', will: 'Воли (Will)', per: 'Восприятия (Per)' };
+  function injectScaleHint(attr) {
+    if ($('modalpopup .gc-scale-hint').length) return;
+    var $sr = $('modalpopup skill-roll').first();
+    if (!$sr.length) return;
+    var name = ATTR_NAMES[attr] || String(attr).toUpperCase();
+    $('<line class="gc-scale-hint nosave" style="margin:16px 0 6px;text-align:center;color:var(--color-main,#4e98e0);font-style:italic">Урон скейлится от ' + name + '</line>').insertBefore($sr);
+  }
+  function wrapAttackTool(name) {
+    if (window['__gcAtk_' + name]) return;
+    if (typeof window[name] !== 'function') return;
+    var store = (window.__gcAtkOrig = window.__gcAtkOrig || {});
+    store[name] = window[name];
+    window[name] = function (obj) {
+      var r = store[name].apply(this, arguments);
+      try {
+        var $dd = $(obj).find('>default').filter(isDmgDefault).first();
+        if ($dd.length) { var attr = ($dd.find('>type').text() || '').trim(); if (attr) injectScaleHint(attr); }
+      } catch (e) {}
+      return r;
+    };
+    window['__gcAtk_' + name] = true;
+  }
+
+  function applyCore() {
+    if (gi.patched.charCalcWeapons_dmg) return;
+    if (typeof window.charCalcWeapons !== 'function') return;
+    wrapGBD();
+    var origCalc = window.charCalcWeapons;
+    window.charCalcWeapons = function () {
+      var saved = [];
+      try {
+        $('melee_weapon, ranged_weapon').each(function () {
+          var $w = $(this);
+          var $dd = $w.find('>default').filter(isDmgDefault).first();
+          if (!$dd.length) return;
+          var attr = ($dd.find('>type').text() || '').trim();
+          if (!attr) return;
+          var v = parseInt(getAttr(attr), 10);
+          if (!(v > 0)) return;
+          var $ss = $w.find('>self_strength:not(.gc-source-value)');
+          saved.push({ $w: $w, had: $ss.length > 0, orig: $ss.length ? $ss.text() : null });
+          if ($ss.length) $ss.first().text(v);
+          else $w.prepend('<self_strength class="gc-dmgscale-tmp">' + v + '</self_strength>');
+        });
+      } catch (e) { if (window.console) console.error('[gc:dmg-scale] core', e); }
+      try {
+        return origCalc.apply(this, arguments);
+      } finally {
+        try {
+          saved.forEach(function (s) {
+            if (s.had) s.$w.find('>self_strength:not(.gc-source-value)').first().text(s.orig);
+            else s.$w.find('>self_strength.gc-dmgscale-tmp').remove();
+          });
+        } catch (e) {}
+      }
+    };
+    gi.patched.charCalcWeapons_dmg = true;
+  }
+
+  function injectMenuItem() {
+    var $popup = $('xml-node-popup');
+    if (!$popup.length) return;
+    if ($popup.find('.gc-ds-menuitem').length) return;
+    var $sel = $('.gc-selected-node').filter(WSEL).first();
+    if (!$sel.length) return;
+    if ($sel.find('>default').filter(isDmgDefault).length) return;
+    var $tmpl = $('modalpopup object-edit default').filter(function () {
+      return !(($(this).hasClass(DMARK)) || ($(this).attr('gc-dmg') != null)) && $(this).find('>type select').length;
+    }).first();
+    var $item = $('<item class="gc-ds-menuitem"><i class="fa fa-plus-circle fa-fw"></i> Зависимость урона</item>');
+    $item.on('click', function () {
+      if (!$tmpl.length) { if (window.console) console.warn('[gc:dmg-scale] нет образца <default> для клона'); $('xml-node-popup').remove(); return; }
+      var $nd = $tmpl.clone(true, true);
+      $nd.removeClass('gc-selected-node collapsed').addClass(DMARK).attr('gc-dmg', '1');
+      $nd.find('>name, >specialization, >modifier').remove();
+      var keep = ['st', 'dx', 'iq', 'ht', 'hp', 'fp', 'will', 'per'];
+      $nd.find('>type select option').each(function () { if (keep.indexOf($(this).attr('value')) < 0) $(this).remove(); });
+      $nd.find('>type select').val('st');
+      $sel.append($nd);
+      $('xml-node-popup').remove();
+      if (typeof calcAllSchedule === 'function') calcAllSchedule();
+    });
+    var $last = $popup.find('item').last();
+    if ($last.length) $last.before($item); else $popup.append($item);
+  }
+  function filterMenu() {
+    var $popup = $('xml-node-popup');
+    if (!$popup.length) return;
+    var $sel = $('.gc-selected-node');
+    if (!$sel.length || !($sel.hasClass(DMARK) || $sel.attr('gc-dmg') != null)) return;
+    $popup.find('item').each(function () {
+      var $i = $(this);
+      if ($i.find('i.fa-clone').length) { $i.remove(); return; }
+      if ($i.find('[tag-name="modifier"], modifier').length || /Улучшен|ограничен/i.test($i.text())) { $i.remove(); return; }
+      if ($i.find('[tag-name="name"], [tag-name="specialization"], name, specialization').length || /Умение|Специализаци/i.test($i.text())) $i.remove();
+    });
+  }
+  function filterSelectOptions() {
+    var keep = ['st', 'dx', 'iq', 'ht', 'hp', 'fp', 'will', 'per'];
+    $('modalpopup object-edit default[gc-dmg] > type select option, modalpopup object-edit default.' + DMARK + ' > type select option').each(function () {
+      if (keep.indexOf($(this).attr('value')) < 0) $(this).remove();
+    });
+  }
+
+  function ensureLabelStyle() {
+    if (document.getElementById('gc-dmg-label-style')) return;
+    var s = document.createElement('style'); s.id = 'gc-dmg-label-style';
+    s.textContent = 'default[gc-dmg]::before{content:"Урон зависит от " !important;}';
+    (document.head || document.documentElement).appendChild(s);
+  }
+
+  applyCore();
+  ensureLabelStyle();
+
+  function tick() {
+    ensureLabelStyle();
+    wrapAttackTool('toolMeleeAttack'); wrapAttackTool('toolRangedAttack');
+    injectMenuItem(); filterMenu(); filterSelectOptions();
+  }
+  if (!gi.bound.dmgScaleUi) {
+    gi.bound.dmgScaleUi = true;
+    tick();
+    var t = null;
+    new MutationObserver(function () {
+      if (t) return;
+      t = setTimeout(function () { t = null; tick(); }, 150);
+    }).observe(document.documentElement, { childList: true, subtree: true });
+  }
+})();
+} catch (gcErr) {
+  (window.gcErrors = window.gcErrors || []).push({
+    section: "DMG-SCALE (урон от характеристики)",
+    msg: String(gcErr && gcErr.message || gcErr),
+    stack: gcErr && gcErr.stack,
+    at: Date.now()
+  });
+  if (window.console) console.error("[gc-bundle:" + "DMG-SCALE (урон от характеристики)" + "]", gcErr);
+}
+
+// ----- CF-MOD (Cost Factor LT) -----
+try {
+// Cost Factor: сложение модификаторов цены из Low-Tech. (v1.0.0)
+/* Если вы знаете про Cost Factor, то зачем сюда заглядываете?))
+   Ладно, теперь без шуток: в редактор модификаторов добавляет новый тип для раздела
+   Цена. CF работает по правилам из LT14, при добавлении модификатора к предмету 
+   отображает бейдж «Σ CF» с возможностью регулировки порога (стандартный -0.8). */
+(function () {
+  'use strict';
+  (window.gcSnippetMeta = window.gcSnippetMeta || {})['cf-mod'] = {
+    label: "Cost Factor (LT)",
+    desc: "Добавляет тип «Cost Factor» в редакторе МОДИФИКАТОРА, а так же " +
+          "бейдж «Σ CF» у предмета, порог выставляется кликом по бейджу.",
+    category: "feature"
+  };
+  if (window.GC_DISABLED_SNIPPETS && window.GC_DISABLED_SNIPPETS.has('cf-mod')) return;
+  window.gcInternal = window.gcInternal || { patched: {}, bound: {} };
+  var gi = window.gcInternal;
+
+  var CFTYPE = 'cost factor';
+  var FLOOR = -0.8;
+
+  function floorVal() {
+    var $t = (typeof gm === 'function') ? gm('gc-cf-floor') : $();
+    var v = $t.length ? parseFloat($t.text()) : NaN;
+    return isNaN(v) ? FLOOR : v;
+  }
+  function setFloorVal(v) {
+    var $t = gm('gc-cf-floor');
+    if (!$t.length) $t = $('<gc-cf-floor></gc-cf-floor>').appendTo(globalChar);
+    $t.text(v);
+  }
+  function syncFloor() { window.__gcCfFloor = floorVal(); }
+  syncFloor();
+
+  function applyCore() {
+    if (gi.patched.getEquipmentValue_cf) return;
+    if (typeof window.getEquipmentValue !== 'function') return;
+    var src = window.getEquipmentValue.toString();
+    var p1 = src.replace(/var quantity=\$\(obj\)\.find\(">quantity"\)\.int\(\);/,
+      'var __gcCf=0,__gcCfHas=false;$&');
+    if (p1 === src) return;
+    var p2 = p1.replace(/ret\s*=\s*modifyFieldByTag\s*\(\s*ret\s*,\s*\$\(this\)\)\s*;/,
+      'var __gcM=$(this);if((__gcM.attr("type")||"")=="' + CFTYPE + '"){__gcCf+=parseFloat(__gcM.text())||0;__gcCfHas=true;}else ret=modifyFieldByTag(ret,__gcM);');
+    if (p2 === p1) return;
+    var p3 = p2.replace(/(ret=modifyFieldByTag\(ret,__gcM\);)\s*\}\)\s*;\s*return ret;/,
+      '$1});if(__gcCfHas){var __fl=(window.__gcCfFloor!=null?window.__gcCfFloor:' + FLOOR + ');if(__gcCf<__fl)__gcCf=__fl;ret=Math.round(ret*(1+__gcCf)*1e6)/1e6;}return ret;');
+    if (p3 === p2) return;
+    var fn;
+    try { fn = eval('(' + p3 + ')'); }
+    catch (e) { if (window.console) console.error('[gc:cf-mod] eval', e); return; }
+    if (typeof fn !== 'function') return;
+    window.getEquipmentValue = fn;
+    gi.patched.getEquipmentValue_cf = true;
+  }
+
+  function injectTypeOption() {
+    $('modalpopup object-edit equipment_modifier > value > type select').each(function () {
+      var $sel = $(this);
+      if (!$sel.find('option[value="' + CFTYPE + '"]').length) {
+        $sel.append('<option value="' + CFTYPE + '">Cost Factor (CF)</option>');
+      }
+    });
+  }
+
+  function openFloorEdit() {
+    if (typeof modalPopup !== 'function') return;
+    var cur = floorVal();
+    var html = "<h4>Порог Cost Factor</h4>"
+      + "<p>Суммарный CF не опускается ниже порога. По RAW LT14: −0.8 (цена ≥20% базы). "
+      + "Напр. −0.6 (Monster Hunters), −0.9 (Pyramid «Broken Blade»), 0 — без снижения.</p>"
+      + "<line><center>Порог: <input type='number' step='0.1' class='gc-cf-floor-inp' style='width:70px' value='" + cur + "'></center></line>";
+    modalPopup(html, 'Применить', 'Отмена', function () {
+      var v = parseFloat($('.gc-cf-floor-inp').val());
+      if (isNaN(v)) v = FLOOR;
+      setFloorVal(v); syncFloor();
+      if (typeof saveButtonEnable === 'function') saveButtonEnable();
+      if (typeof calcAll === 'function') calcAll();
+    });
+  }
+
+  function injectCfBadge() {
+    var floor = (window.__gcCfFloor != null ? window.__gcCfFloor : FLOOR);
+    var seen = [];
+    $('character equipment_container, character equipment').each(function () {
+      var $owner = $(this);
+      var $cfVals = $owner.children('equipment').children('equipment_modifier').children('value[type="' + CFTYPE + '"]');
+      if (!$cfVals.length) return;
+      var sum = 0; $cfVals.each(function () { sum += parseFloat($(this).text()) || 0; });
+      var floored = sum < floor;
+      var eff = floored ? floor : sum;
+      var mult = Math.round((1 + eff) * 100) / 100;
+      var txt = 'Σ CF ' + (sum >= 0 ? '+' : '') + (Math.round(sum * 100) / 100) + ' → ×' + mult + (floored ? ' (порог ' + floor + ')' : '');
+      var $anchor = $owner.children('description, description-loc').first();
+      if (!$anchor.length) return;
+      var $b = $anchor.children('.gc-cf-badge');
+      if (!$b.length) {
+        $b = $('<span class="gc-cf-badge nosave" title="Cost Factor предмета. Клик — изменить порог"></span>');
+        /* Важное гашение mousedown: бейдж находится внутри <description class="editable">, 
+           иначе editable перехватывает mousedown раньше клика и модалка не откроется. */
+        $b.on('mousedown dblclick', function (e) { e.stopPropagation(); e.preventDefault(); });
+        $b.on('click', function (e) { e.stopPropagation(); e.preventDefault(); openFloorEdit(); });
+        $anchor.append($b);
+      }
+      $b.text(txt).toggleClass('gc-cf-floored', floored);
+      seen.push($owner[0]);
+    });
+    // Снос бейджа, если предмет без CF
+    $('.gc-cf-badge').each(function () {
+      var own = $(this).closest('equipment_container, equipment')[0];
+      if (seen.indexOf(own) < 0) $(this).remove();
+    });
+  }
+
+  applyCore();
+
+  function tick() {
+    syncFloor();
+    injectTypeOption();
+    injectCfBadge();
+  }
+  if (!gi.bound.cfUi) {
+    gi.bound.cfUi = true;
+    tick();
+    var t = null;
+    new MutationObserver(function () {
+      if (t) return;
+      t = setTimeout(function () { t = null; tick(); }, 200);
+    }).observe(document.documentElement, { childList: true, subtree: true });
+  }
+})();
+} catch (gcErr) {
+  (window.gcErrors = window.gcErrors || []).push({
+    section: "CF-MOD (Cost Factor LT)",
+    msg: String(gcErr && gcErr.message || gcErr),
+    stack: gcErr && gcErr.stack,
+    at: Date.now()
+  });
+  if (window.console) console.error("[gc-bundle:" + "CF-MOD (Cost Factor LT)" + "]", gcErr);
+}
+
+// ----- SPELL-ATTR (базовый атрибут заклинания) -----
+try {
+// Выбор базового атрибута заклинания (Will/Per/DX...). (v1.1.0)
+/* Движок считает уровень заклинаний только от IQ. По Thaumatology (p.29) заклинание
+   может быть основано на Will/Per/DX/HT/ST (Will-Based Magic и пр.). Сниппет добавляет
+   заклинаниям выбор базового атрибута прямо на листе персонажа. */
+(function () {
+  'use strict';
+  (window.gcSnippetMeta = window.gcSnippetMeta || {})['spell-attr'] = {
+    label: "Базовый атрибут заклинания",
+    desc: "Уровень заклинания можно считать от Will/Per/DX/HT/ST, а не только от IQ " +
+          "(Thaumatology p.29). Триггер на строке заклинания → выбор атрибута в " +
+          "нативной модалке.",
+    category: "feature"
+  };
+  if (window.GC_DISABLED_SNIPPETS && window.GC_DISABLED_SNIPPETS.has('spell-attr')) return;
+  window.gcInternal = window.gcInternal || { patched: {}, bound: {} };
+  var gi = window.gcInternal;
+
+  var MAP = { iq: 'IQ', will: 'Will', per: 'Per', dx: 'DX', ht: 'HT', st: 'ST' };
+  var ORDER = ['iq', 'will', 'per', 'dx', 'ht', 'st'];
+  window.__gcSpellBase = function (node) {
+    var v = ($(node).attr('gc-base') || '').toLowerCase();
+    return MAP[v] || 'IQ';
+  };
+  function applyPatch() {
+	if (gi.patched.spellAttr) return;
+	if (typeof window.getBasicSpellLevel !== 'function' || typeof window.calcSpell !== 'function') return;
+	var s1 = window.getBasicSpellLevel.toString();
+	var p1 = s1.replace('var level=parseInt(getAttr("IQ"));',
+	  'var level=parseInt(getAttr(window.__gcSpellBase?window.__gcSpellBase(obj):"IQ"));');
+	var s2 = window.calcSpell.toString();
+	var p2 = s2.replace(
+	  /var textual='IQ'\+relativeLevel;[\s\S]*?textual='IQ'\+"\+"\+relativeLevel;/,
+	  "var __b=(window.__gcSpellBase?window.__gcSpellBase(obj):'IQ'); var textual=__b+relativeLevel; if(relativeLevel==0)textual=__b; if(relativeLevel>0)textual=__b+'+'+relativeLevel;");
+	if (p1 === s1 || p2 === s2) { if (window.console) console.warn('[gc:spell-attr] патч пропущен (вероятнее всего разраб Ментора обновил движок?)'); return; }
+	var f1, f2;
+	try { f1 = eval('(' + p1 + ')'); f2 = eval('(' + p2 + ')'); }
+	catch (e) { if (window.console) console.error('[gc:spell-attr] eval', e); return; }
+	if (typeof f1 !== 'function' || typeof f2 !== 'function') return;
+	window.getBasicSpellLevel = f1; window.calcSpell = f2;
+	gi.patched.spellAttr = true;
+  }
+  function baseOf($sp) { var c = ($sp.attr('gc-base') || 'iq').toLowerCase(); return MAP[c] ? c : 'iq'; }
+  function openAttrMenu($sp, $trig) {
+	if (typeof modalPopup !== 'function') return;
+	var cur = baseOf($sp);
+	var btns = ORDER.map(function (k) {
+	  return "<button class='btn gc-spell-attr-opt' data-k='" + k + "'"
+		+ (k === cur ? " style='font-weight:bold;outline:2px solid var(--color-main,#4e98e0)'" : "") + ">" + MAP[k] + "</button>";
+	}).join(' ');
+	modalPopup(
+	  "<h4>Изменение базового атрибута заклинания</h4>"
+	  + "<p>Уровень заклинания считается от выбранного атрибута (Thaumatology p.29, Will-Based Magic и пр.).</p>"
+	  + "<line style='text-align:center;line-height:2.4'>" + btns + "</line>",
+	  null, 'Закрыть', null, null,
+	  function () {
+		$('.gc-spell-attr-opt').off('click').on('click', function () {
+		  var k = $(this).attr('data-k');
+		  $sp.attr('gc-base', k);
+		  if ($trig) $trig.html(MAP[k] + ' ▾');
+		  if (typeof saveButtonEnable === 'function') saveButtonEnable();
+		  if (typeof calcAllSchedule === 'function') calcAllSchedule();
+		  if (typeof modalPopupClose === 'function') modalPopupClose();
+		});
+	  }
+	);
+  }
+  function injectSpellTriggers() {
+	$('spell').each(function () {
+	  var $sp = $(this);
+	  if ($sp.hasClass('empty-container')) return;
+	  var $trig = $sp.find('> .gc-spell-trig');
+	  if ($trig.length) { $trig.html(MAP[baseOf($sp)] + ' ▾'); return; }
+	  $trig = $('<span class="gc-spell-trig nosave" title="Базовый атрибут заклинания — клик для смены">' + MAP[baseOf($sp)] + ' ▾</span>');
+	  $trig.on('mousedown dblclick', function (e) { e.stopPropagation(); });
+	  $trig.on('click', function (e) { e.stopPropagation(); e.preventDefault(); openAttrMenu($sp, $trig); });
+	  var $anchor = $sp.find('> gc-stat'); if (!$anchor.length) $anchor = $sp.find('> gc-level');
+	  if ($anchor.length) $anchor.after($trig); else $sp.append($trig);
+	});
+  }
+
+  applyPatch();
+
+  function tick() { injectSpellTriggers(); }
+  if (!gi.bound.spellAttrUi) {
+	gi.bound.spellAttrUi = true;
+	tick();
+	var t = null;
+	new MutationObserver(function () {
+	  if (t) return;
+	  t = setTimeout(function () { t = null; tick(); }, 200);
+	}).observe(document.documentElement, { childList: true, subtree: true });
+  }
+})();
+} catch (gcErr) {
+  (window.gcErrors = window.gcErrors || []).push({
+    section: "SPELL-ATTR (базовый атрибут заклинания)",
+    msg: String(gcErr && gcErr.message || gcErr),
+    stack: gcErr && gcErr.stack,
+    at: Date.now()
+  });
+  if (window.console) console.error("[gc-bundle:" + "SPELL-ATTR (базовый атрибут заклинания)" + "]", gcErr);
+}
+
 // ----- GC-TOGGLER-UI (last) -----
 try {
-// UI для gc-toggler: кнопка «Сниппеты» рядом с </>.
+// UI для gc-toggler: кнопка «Сниппеты» рядом с </>. (v1.1.0)
 /* Что делает: даёт визуально включать/выключать группы сниппетов
    через checkbox-list в модалке. Cascade-логика requires —
    автоматическая (опирается на window.gcToggler.normalizeCascade).
@@ -1638,15 +1882,15 @@ try {
    Зависимости: gc-toggler.js и gc-toggler-ui.less. */
 (function () {
   if (typeof gm !== "function" || typeof $ !== "function") return;
-  if (window.GC_DISABLED_SNIPPETS && window.GC_DISABLED_SNIPPETS.has("gc-toggler-ui")) return;
   window.gcInternal = window.gcInternal || { patched: {}, bound: {} };
   if (window.gcInternal.bound.togglerUi) return;
   window.gcInternal.bound.togglerUi = true;
 
-  mountButton();
-
   var mountAttempts = 0;
   var MAX_MOUNT_ATTEMPTS = 20; // 20 * 500ms = 10s. Не обязательно так много, но лучше перебздеть чем недобздеть.
+
+  mountButton();
+  (window.gcReRunHooks = window.gcReRunHooks || []).push(function () { mountButton(); });
   function mountButton() {
     if ($("#gc-toggler-btn").length) return;
     // Присоска к </> — она всегда есть в edit-mode
@@ -1668,19 +1912,18 @@ try {
     } else {
       $scriptBtn.parent().append($btn);
     }
-    $(document).on("click.gcTogglerUi", "#gc-toggler-btn", openModal);
+    $(document).off("click.gcTogglerUi").on("click.gcTogglerUi", "#gc-toggler-btn", openModal);
 
     /* Кнопка «⚠ Ошибки (N)» — только если window.gcErrors непуст.
        Заполняется bundle-wrap'ом (SECTION try/catch) и gcUtils.gcLog.
        Покажет счётчик ВСЕХ записей, но в модалке акцент на errors
        (warn'ы — это ожидаемые проблемы вроде parse-failure / pastFromStorage). */
-    var errs = (window.gcErrors || []).filter(function (e) { return e && (e.level !== "warn"); });
-    if (errs.length || (window.gcErrors && window.gcErrors.length)) {
+    if (window.gcErrors && window.gcErrors.length) {
       var $errBtn = $('<button id="gc-errors-btn" class="secondary hide-in-template-mode" ' +
         'title="Runtime ошибки сниппетов" style="margin-left:5px;white-space:nowrap;color:#d9534f;">' +
         '<i class="fa fa-exclamation-triangle"></i> Ошибки (' + (window.gcErrors.length) + ')</button>');
       $btn.after($errBtn);
-      $(document).on("click.gcTogglerUiErr", "#gc-errors-btn", openErrorsModal);
+      $(document).off("click.gcTogglerUiErr").on("click.gcTogglerUiErr", "#gc-errors-btn", openErrorsModal);
     }
   }
 
@@ -1706,8 +1949,9 @@ try {
         if (err.msg && err.msg !== label) {
           $row.append('<div style="margin-top:4px;font-family:monospace;font-size:12px">' + escapeHtml(err.msg) + '</div>');
         }
-        if (err.stack) {
-          $row.append('<pre style="margin:6px 0 0 0;font-size:11px;opacity:0.7;max-height:200px;overflow:auto;background:rgba(0,0,0,0.04);padding:6px;border-radius:3px">' + escapeHtml(err.stack) + '</pre>');
+        var st = err.stack || err.err;
+        if (st) {
+          $row.append('<pre style="margin:6px 0 0 0;font-size:11px;opacity:0.7;max-height:200px;overflow:auto;background:rgba(0,0,0,0.04);padding:6px;border-radius:3px">' + escapeHtml(st) + '</pre>');
         }
         if (err.at) {
           $row.append('<div style="font-size:10px;opacity:0.4;margin-top:4px">' + new Date(err.at).toISOString() + '</div>');
@@ -1729,8 +1973,24 @@ try {
     return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
   }
 
-  // Set id групп, которые юзер выключил в текущем (несохранённом) черновике.
   var DRAFT = new Set();
+  var DESC_OPEN = new Set();
+
+  // Категория-бейдж: подпись + класс цвета.
+  var CATEGORY_META = {
+    fix:      { label: "Fix",      cls: "gc-cat-fix" },
+    feature:  { label: "Feature",  cls: "gc-cat-feature" },
+    homebrew: { label: "Homebrew", cls: "gc-cat-homebrew" },
+    perk:     { label: "Perk",     cls: "gc-cat-perk" },
+    qol:      { label: "QoL",      cls: "gc-cat-qol" }
+  };
+  // Мета инфа сниппета (label/desc/category), указывается самими сниппетами.
+  function snippetMetaOf(gid, groups) {
+    var g = groups[gid];
+    var snip = g && g.snippets && g.snippets[0];
+    var m = (snip && window.gcSnippetMeta && window.gcSnippetMeta[snip]) || {};
+    return { label: m.label || gid, desc: m.desc || "", category: m.category || null };
+  }
 
   function openModal() {
     if (!window.gcToggler) {
@@ -1742,6 +2002,7 @@ try {
       return;
     }
     DRAFT = new Set(window.gcToggler.getDisabledGroups());
+    DESC_OPEN = new Set();
 
     var $wrapper = $('<div class="mentor"><char-xml style="display:block"></char-xml></div>');
     var $overlay = $(
@@ -1766,9 +2027,12 @@ try {
       willBeDisabled
         .filter(function (gid) { return !prevDisabled.has(gid); })
         .forEach(function (gid) { window.gcToggler.cleanupForDisabled(gid); });
-
-      window.gcToggler.setDisabledGroups(Array.from(DRAFT), { save: true });
-      setTimeout(function () { location.reload(); }, 300);
+      window.gcToggler.setDisabledGroups(Array.from(DRAFT), { save: false });
+      var reloaded = false;
+      var doReload = function () { if (reloaded) return; reloaded = true; location.reload(); };
+      if (typeof saveCurrentChar === "function") saveCurrentChar(true, doReload);
+      else doReload();
+      setTimeout(doReload, 4000);
     });
   }
 
@@ -1776,10 +2040,6 @@ try {
     var groups = window.gcToggler.getGroups();
     var $list = $overlay.find(".gc-tog-list").empty();
     var $footer = $overlay.find(".gc-tog-footer").empty();
-
-    /* top-level сортировка (parent=null) по числу requires; под каждой
-       children в том же порядке. Даёт иерархию «Зоны попадания» →
-       DR-наследование → 1d6 подлокации (подряд, с отступом). */
     var allIds = Object.keys(groups);
     var topIds = allIds.filter(function (id) { return !groups[id].parent; })
       .sort(function (a, b) { return groups[a].requires.length - groups[b].requires.length; });
@@ -1788,35 +2048,40 @@ try {
         .sort(function (a, b) { return groups[a].requires.length - groups[b].requires.length; });
     };
 
+    var labelOf = function (gid) { return snippetMetaOf(gid, groups).label; };
+
     function renderRow(gid, depth) {
       var g = groups[gid];
+      var meta = snippetMetaOf(gid, groups);
+      var cat = meta.category && CATEGORY_META[meta.category];
       var disabled = DRAFT.has(gid);
-      // cascadeDisabled: автоматически выключится из-за того, что requires выключен.
       var cascadeDisabled = false;
       g.requires.forEach(function (req) { if (DRAFT.has(req)) cascadeDisabled = true; });
-
-      var $row = $(
-        '<div class="gc-tog-row">' +
-          '<label class="gc-tog-label">' +
-            '<input type="checkbox" class="gc-tog-cb">' +
-            '<span class="gc-tog-name"></span>' +
-            '<span class="gc-tog-id"></span>' +
-          '</label>' +
-          '<div class="gc-tog-desc"></div>' +
-          '<div class="gc-tog-req"></div>' +
-        '</div>'
-      );
+      var $row = $('<div class="gc-tog-row"></div>');
       if (depth > 0) $row.addClass("is-child").attr("data-depth", depth);
-      $row.find(".gc-tog-name").text(g.label);
-      $row.find(".gc-tog-id").text("[" + gid + "]");
-      $row.find(".gc-tog-desc").text(g.desc);
-
+      var $label = $('<label class="gc-tog-label"></label>');
+      var $cb = $('<input type="checkbox" class="gc-tog-cb">');
+      $label.append($cb);
+      $label.append($('<span class="gc-tog-name"></span>').text(meta.label));
+      if (cat) $label.append($('<span class="gc-tog-badge ' + cat.cls + '"></span>').text(cat.label));
+      $row.append($label);
       if (g.requires.length) {
-        var reqLabels = g.requires.map(function (r) { return (groups[r] && groups[r].label) || r; }).join(", ");
-        $row.find(".gc-tog-req").text("Требует: " + reqLabels);
+        var reqLabels = g.requires.map(labelOf).join(", ");
+        $row.append($('<div class="gc-tog-req"></div>').text("Требует: " + reqLabels));
+      }
+      if (meta.desc) {
+        var open = DESC_OPEN.has(gid);
+        var $toggle = $('<a class="gc-tog-desc-toggle" href="#"></a>').text(open ? "Скрыть описание" : "Описание");
+        var $desc = $('<div class="gc-tog-desc"></div>').text(meta.desc);
+        if (!open) $desc.hide();
+        $toggle.on("click", function (e) {
+          e.preventDefault();
+          if (DESC_OPEN.has(gid)) { DESC_OPEN.delete(gid); $desc.slideUp(120); $toggle.text("Описание"); }
+          else { DESC_OPEN.add(gid); $desc.slideDown(120); $toggle.text("Скрыть описание"); }
+        });
+        $row.append($toggle).append($desc);
       }
 
-      var $cb = $row.find(".gc-tog-cb");
       $cb.prop("checked", !disabled && !cascadeDisabled);
       if (cascadeDisabled && !disabled) {
         $cb.prop("disabled", true);
@@ -1850,7 +2115,7 @@ try {
     var changed = (current.size !== DRAFT.size) ||
                   Array.from(DRAFT).some(function (id) { return !current.has(id); });
     if (changed) {
-      var disabledLabels = Array.from(DRAFT).map(function (id) { return groups[id] ? groups[id].label : id; });
+      var disabledLabels = Array.from(DRAFT).map(labelOf);
       $footer.html('<div class="gc-tog-status changed">⚠ Будет выключено после применения: <b>' +
         (disabledLabels.length ? disabledLabels.join(", ") : "—") + '</b></div>');
     } else {
