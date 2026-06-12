@@ -1,4 +1,4 @@
-// Централизованный enable/disable для сниппетов. Подключать ПЕРВЫМ в <gc-script>.
+// Централизованный enable/disable для сниппетов. Подключать ПЕРВЫМ в <gc-script>. (v1.1.0)
 /* Что делает: читает <gc-disabled-snippets> (base64 JSON-массив id групп),
    ставит window.GC_DISABLED_SNIPPETS — это видят guard'ы в остальных сниппетах
    и пропускают свою инициализацию.
@@ -24,61 +24,20 @@
   if (typeof gm !== "function" || typeof globalChar === "undefined") return;
   if (window.gcToggler && window.gcToggler.__bound) return;
 
-  /* Реестр групп сниппетов.
+  /* Реестр групп сниппетов — ТОЛЬКО структура (связи), без описаний.
+     label/desc/category каждого сниппета регистрирует САМ сниппет в
+     window.gcSnippetMeta[snippetId]; UI домержит их по snippets[0].
      requires — id групп, без которых эта не работает (cascade).
      parent   — UI-вложение (только визуально, отступ в checkbox-list). */
   var GROUPS = {
-    "engine-fixes": {
-      label: "Фиксы движка",
-      desc: "Обход бага modifyField(N, 0, multiply...) → строка \"N*0\" вместо 0. " +
-            "Без него ломаются DR/HP/FP-множители. Содержит: fix-multiply-zero.",
-      snippets: ["fix-multiply-zero"],
-      requires: [],
-      parent: null
-    },
-    "hit-locations": {
-      label: "Зоны попадания",
-      desc: "Кастомные зоны hit-locations: переименование, custom DR/toHit, " +
-            "3d6-таблица random hit, тултипы. UI-кнопка «⚔ Зоны».",
-      snippets: ["hit-locations"],
-      requires: ["engine-fixes"],
-      parent: null
-    },
-    "dr-inheritance": {
-      label: "DR-наследование",
-      desc: "Cascade DR от parent-зоны в подзоны; fullBody DR для root-level custom; " +
-            "компенсация двойного учёта fullBody. Без hit-locations работает безвредно " +
-            "(просто нет данных).",
-      snippets: ["dr-inheritance"],
-      requires: [], // hit-locations нужен для смысла, но noop без него — не блокируем
-      parent: "hit-locations"
-    },
-    "sub-location": {
-      label: "1d6 подлокации",
-      desc: "Доп. бросок 1d6 при попадании в Arm/Leg/Skull/Face → подлокация " +
-            "(предплечье/локоть/.../мозг). Дефолтные таблицы — самодостаточны; " +
-            "custom-таблицы из hit-locations + DR-наследование от dr-inheritance — опционально.",
-      snippets: ["sub-location"],
-      requires: [], // дополняют hit-locations/dr-inheritance, но работают и без них
-      parent: "hit-locations"
-    },
-    "perks": {
-      label: "Перки",
-      desc: "Custom-перки: strong-back (Крепкий хребет — подъёмная сила 6/10/20/30×ST).",
-      snippets: ["strong-back"],
-      requires: [],
-      parent: null
-    },
-    "qol": {
-      label: "Quality of Life",
-      desc: "Улучшения UX: ace-fold-all — автосворачивание всех блоков при открытии " +
-            "Ace-редактора <gc-script>/<gc-basic-xml> через foldAll() + " +
-            "marker-based fold для <gc-style-less> по START/END комментариям " +
-            "(с MutationObserver на gutter для persistent widget).",
-      snippets: ["ace-fold-all"],
-      requires: [],
-      parent: null
-    }
+    "engine-fixes":   { snippets: ["fix-multiply-zero"], requires: [],               parent: null },
+    "hit-locations":  { snippets: ["hit-locations"],     requires: ["engine-fixes"], parent: null },
+    "dr-inheritance": { snippets: ["dr-inheritance"],    requires: [],               parent: "hit-locations" }, // hit-locations нужен для смысла, но noop без него — не блокируем
+    "perks":          { snippets: ["strong-back"],       requires: [],               parent: null },
+    "qol":            { snippets: ["ace-fold-all"],      requires: [],               parent: null },
+    "dmg-scale":      { snippets: ["dmg-scale"],         requires: [],               parent: null },
+    "cf-mod":         { snippets: ["cf-mod"],            requires: [],               parent: null },
+    "spell-attr":     { snippets: ["spell-attr"],        requires: [],               parent: null },
   };
 
   function loadDisabledGroups() {
@@ -211,7 +170,7 @@
       var copy = {};
       Object.keys(GROUPS).forEach(function (k) {
         var g = GROUPS[k];
-        copy[k] = { label: g.label, desc: g.desc, snippets: g.snippets.slice(), requires: g.requires.slice(), parent: g.parent || null };
+        copy[k] = { snippets: g.snippets.slice(), requires: g.requires.slice(), parent: g.parent || null };
       });
       return copy;
     },

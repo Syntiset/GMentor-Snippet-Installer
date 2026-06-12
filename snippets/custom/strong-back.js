@@ -1,9 +1,15 @@
-//  Сниппет для преимущества Strong Back (Крепкий хребет): 6*ST / 10*ST / 20*ST / 30*ST
+//  Сниппет для преимущества Strong Back (Крепкий хребет): 6*ST / 10*ST / 20*ST / 30*ST (v1.1.0)
 /*  Срабатывает, если у персонажа есть активное преимущество c каноническим именем
     "Strong Back" из Fallout Revised. Отключение через UI (stopped='yes') автоматически
     возвращает штатный расчёт ST. Может конфликтовать с KYOS.*/
 
 (function () {
+  (window.gcSnippetMeta = window.gcSnippetMeta || {})["strong-back"] = {
+    label: "Крепкий хребет (Fallout Revised)",
+    desc: "Strong Back (Крепкий хребет — подъёмная сила 6/10/20/30×ST). При добавлении преимущества " +
+	      "с названием Strong Back меняется расчёт перегруза. Перк из Fallout Revised.",
+    category: "perk"
+  };
   if (window.GC_DISABLED_SNIPPETS && window.GC_DISABLED_SNIPPETS.has("strong-back")) return;
   window.gcInternal = window.gcInternal || { patched: {}, bound: {} };
   if (window.gcInternal.patched.strongBack) return;

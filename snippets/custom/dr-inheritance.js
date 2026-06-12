@@ -1,4 +1,4 @@
-// Сниппет DR-наследования для иерархии зон + фиксы движкового DR-pipeline.
+// Сниппет DR-наследования для иерархии зон + фиксы движкового DR-pipeline. (v1.1.0)
 /* Что делает: каскадирует DR родительской зоны в её подзоны (B398-399).
    Без этого:  ставишь броню на торс — а в abdomen/vitals/groin DR=0 при попадании.
    С этим:     дочерки наследуют DR родителя и видно прямо в блоке локаций.
@@ -15,17 +15,21 @@
        применил к ним fullBody напрямую, а cascade добавил бы его ещё раз
        через parent.total. Вычитает заранее через adjustStdSubzoneDR.
 
-   Обёртка damageRoll: при «DR цели=0» (default поле в модалке атаки) читает
-   DR выбранной зоны из DOM — там уже cascade применён. При DR цели>0 —
-   юзер явно задал DR внешней цели, а значит сниппет не трогает его.
-
    Зависимость: hit-locations (читает window.GC_HIT_LOCATIONS_LIST).
 
    Порядок подключения:
-     fix-multiply-zero → hit-locations → dr-inheritance → sub-location
+     fix-multiply-zero → hit-locations → dr-inheritance
    dr-inheritance оборачивает charCalcDR ПОВЕРХ hit-locations — чтобы видеть
-   уже созданные custom-зоны. sub-location.js идёт ПОСЛЕ, читает наследованный DR. */
+   уже созданные custom-зоны. (all-сниппет «Подлокации», если установлен,
+   читает уже наследованный DR.) */
 (function () {
+  (window.gcSnippetMeta = window.gcSnippetMeta || {})["dr-inheritance"] = {
+    label: "DR-наследование",
+    desc: "Cascade DR от parent-зоны в подзоны; fullBody DR для root-level custom; " +
+          "компенсация двойного учёта fullBody. Без hit-locations работает безвредно " +
+          "(просто нет данных).",
+    category: "feature"
+  };
   if (window.GC_DISABLED_SNIPPETS && window.GC_DISABLED_SNIPPETS.has("dr-inheritance")) return;
   window.gcInternal = window.gcInternal || { patched: {}, bound: {} };
   var gi = window.gcInternal;
@@ -61,21 +65,6 @@
       total += amt;
     });
     return total;
-  }
-
-  function getToolLocation() {
-    var $sel = $("modalpopup #c_location option:selected, .tool-popup #c_location option:selected").first();
-    if (!$sel.length) return null;
-    var loc = $sel.attr("location");
-    if (loc === "random") return window.__gcLastRandomLocation || null;
-    return loc || null;
-  }
-
-  function readDRFromDom(code) {
-    var $node = $("locations-list location[name='" + code + "']").first();
-    if (!$node.length) return 0;
-    var v = parseInt($node.children("dr").first().text(), 10);
-    return isFinite(v) ? v : 0;
   }
 
   function adjustStdSubzoneDR(list) {
@@ -143,20 +132,6 @@
         }
       } catch (e) {}
       return ret;
-    };
-  }
-
-  /* damageRoll при dr=0 (default DR цели в модалке) — читать DR зоны
-     из DOM, где cascade уже применён. При dr>0 — юзер ввёл override. */
-  if (!gi.patched.drInhDamageRoll && typeof window.damageRoll === "function") {
-    gi.patched.drInhDamageRoll = true;
-    var _origDamageRoll = window.damageRoll;
-    window.damageRoll = function (damage, outputPlace, dr, cb) {
-      if (!dr) {
-        var loc = getToolLocation();
-        if (loc) dr = readDRFromDom(loc);
-      }
-      return _origDamageRoll.call(this, damage, outputPlace, dr, cb);
     };
   }
 

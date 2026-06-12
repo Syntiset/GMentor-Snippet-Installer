@@ -1,7 +1,7 @@
-// Сниппет кастомных зон попаданий + UI-редактор «⚔ Зоны».
+// Сниппет кастомных зон попаданий + UI-редактор «⚔ Зоны». (v1.1.0)
 /* Что делает: позволяет переименовывать штатные зоны попаданий, править
-   to-hit / базовый DR, добавлять свои зоны и вложения, переписывать
-   3d6-таблицу случайного попадания, задавать тултипы и таблицы
+   to-hit / базовый DR, удобнее добавлять свои зоны и вложения, 
+   переписывать 3d6-таблицу случайного попадания, задавать тултипы и таблицы
    1d6-подлокаций (для sub-location).
 
    UI: кнопка «⚔ Зоны» в edit-mode тулбаре, рядом с </> — открывает
@@ -17,6 +17,12 @@
                              parent / custom-зон. Без него DR родителей не
                              каскадится в подзоны => атаки игнорирят броню. */
 (function () {
+  (window.gcSnippetMeta = window.gcSnippetMeta || {})["hit-locations"] = {
+    label: "Зоны попадания",
+    desc: "Кастомные зоны hit-locations: переименование, custom DR/toHit, " +
+          "3d6-таблица random hit, тултипы. UI-кнопка «⚔ Зоны».",
+    category: "feature"
+  };
   if (window.GC_DISABLED_SNIPPETS && window.GC_DISABLED_SNIPPETS.has("hit-locations")) return;
   window.gcInternal = window.gcInternal || { patched: {}, bound: {} };
   var gi = window.gcInternal;
@@ -52,10 +58,9 @@
   
   function applyAll(list) {
     ACTIVE_LIST = list;
-    patchToolsLocationsSelectTemplate(list);
     patchLocationHint(list);
     patchRandomLocation(list);
-    exportSubTables(list);
+    exportLocationsList(list);
     if (typeof window.charCalcDR === "function") {
       try { window.charCalcDR(); } catch (e) {}
     }
@@ -70,26 +75,7 @@
     });
   }
 
-  /* Экспорт subTable полей зон в window.GC_SUB_LOCATION_TABLES_CUSTOM
-     (для sub-location) + плоский список всех зон в window.GC_HIT_LOCATIONS_LIST
-     (для resolve ссылок на подзону). Формат ячейки subTable:
-       - string (code)               — ссылка на подзону, name/dr/hint оттуда.
-       - object {name, dr?, hint?}   — ввод ручками. */
-  function exportSubTables(list) {
-    var tables = {};
-    list.forEach(function (loc) {
-      if (!loc || !loc.subTable || typeof loc.subTable !== "object") return;
-      var entries = {};
-      Object.keys(loc.subTable).forEach(function (k) {
-        var n = +k;
-        if (n < 1 || n > 6) return;
-        var cell = loc.subTable[k];
-        if (typeof cell === "string" && cell) entries[n] = cell;
-        else if (cell && typeof cell === "object" && cell.name) entries[n] = cell;
-      });
-      if (Object.keys(entries).length) tables[loc.code] = entries;
-    });
-    window.GC_SUB_LOCATION_TABLES_CUSTOM = tables;
+  function exportLocationsList(list) {
     window.GC_HIT_LOCATIONS_LIST = list;
   }
 
@@ -123,37 +109,40 @@
     window.charCalcDR = function () {
       if (window.__gcLock) return _orig.apply(this, arguments);
       window.__gcLock = true;
-      var $ll = gm("locations-list");
-      var savedParents = {};
-      $ll.find("location > location").each(function () {
-        var code = $(this).attr("name");
-        var pCode = $(this).parent().attr("name");
-        if (code && pCode) savedParents[code] = pCode;
-      }).appendTo($ll);
-      var r = _orig.apply(this, arguments);
       try {
-        $ll.find("dr").each(function () {
-          var t = $(this).text();
-          if (t.indexOf("*") === -1) return;
-          var p = t.split("*");
-          if (parseFloat(p[0]) === 0 || parseFloat(p[1]) === 0) $(this).text("0");
-        });
-        applyCustomLocations(ACTIVE_LIST);
-        applyToHitAndRoll(ACTIVE_LIST);
-        addBaseDR(ACTIVE_LIST);
-        updateLocationAttributes(ACTIVE_LIST);
-        var listed = {};
-        ACTIVE_LIST.forEach(function (l) { listed[l.code] = true; });
-        Object.keys(savedParents).forEach(function (code) {
-          if (listed[code]) return;
-          var $node = $ll.children("location[name='" + code + "']");
-          if (!$node.length) return;
-          var $parent = $ll.find("location[name='" + savedParents[code] + "']").first();
-          if ($parent.length) $parent.append($node);
-        });
-      } catch (e) {}
-      window.__gcLock = false;
-      return r;
+        var $ll = gm("locations-list");
+        var savedParents = {};
+        $ll.find("location > location").each(function () {
+          var code = $(this).attr("name");
+          var pCode = $(this).parent().attr("name");
+          if (code && pCode) savedParents[code] = pCode;
+        }).appendTo($ll);
+        var r = _orig.apply(this, arguments);
+        try {
+          $ll.find("dr").each(function () {
+            var t = $(this).text();
+            if (t.indexOf("*") === -1) return;
+            var p = t.split("*");
+            if (parseFloat(p[0]) === 0 || parseFloat(p[1]) === 0) $(this).text("0");
+          });
+          applyCustomLocations(ACTIVE_LIST);
+          applyToHitAndRoll(ACTIVE_LIST);
+          addBaseDR(ACTIVE_LIST);
+          updateLocationAttributes(ACTIVE_LIST);
+          var listed = {};
+          ACTIVE_LIST.forEach(function (l) { listed[l.code] = true; });
+          Object.keys(savedParents).forEach(function (code) {
+            if (listed[code]) return;
+            var $node = $ll.children("location[name='" + code + "']");
+            if (!$node.length) return;
+            var $parent = $ll.find("location[name='" + savedParents[code] + "']").first();
+            if ($parent.length) $parent.append($node);
+          });
+        } catch (e) {}
+        return r;
+      } finally {
+        window.__gcLock = false;
+      }
     };
   }
 
@@ -270,7 +259,7 @@
         (window.__gcLocHintList || []).forEach(function (loc) {
           if (!loc.hint) return;
           var cls = "location-note-" + loc.code;
-          if (!$hints.find("." + cls).length) $hints.append("<span class='" + cls + "' style='display:none'>" + loc.hint + "</span>");
+          if (!$hints.find("." + cls).length) $("<span style='display:none'></span>").addClass(cls).text(loc.hint).appendTo($hints);
         });
       }
       return orig ? orig.apply(this, arguments) : undefined;
@@ -294,12 +283,15 @@
   function patchRandomLocation(list) {
     if (!gi.patched.getRandomLocation) {
       gi.patched.getRandomLocation = true;
-      window.getRandomLocation = function () {
+      var fn = function () {
         var r = 0; for (var i = 0; i < 3; i++) r += 1 + Math.floor(Math.random() * 6);
         var ov = window.__gcLocRolls || {};
         if (ov[r]) return ov[r];
         return defaultLocationForRoll(r);
       };
+      var s = window.__gcRandOrig;
+      if (s && typeof s.getRandomLocation === 'function') s.getRandomLocation = fn;
+      else window.getRandomLocation = fn;
     }
     window.__gcLocRolls = {};
     list.forEach(function (l) {
@@ -326,7 +318,7 @@
     var $topPanel = $("<div class='editor-toolbar' style='overflow:hidden;'></div>").appendTo($container);
     $topPanel.append("<h2 style='float:left; margin:0; border:none;'>Редактор зон попаданий</h2>");
     $("<button style='float:right;'>Документация</button>").on("click", function() { $container.find('help').toggleClass('expand'); }).appendTo($topPanel);
-    var $help = $("<help></help>").html(`<div><h2>Как это работает:</h2>• Для <b>правки</b> стандартной зоны впишите её Код (ID) и добавьте нужные поля через меню <b>+</b>.<br>• Для <b>создания</b> новой зоны нажмите кнопку внизу списка и включите <b>Новая зона</b>.<br>• <b>Родитель (ID)</b> — ID зоны, внутрь которой будет вложена текущая.<br>• <b>Является родителем</b> — помечает зону как контейнер для других подлокаций.</div><div><h3>Стандартные коды зон:</h3>skull, face, eyes, neck, torso, groin, arms, hands, legs, feet</div><div><h3>Подлокации:</h3><b>arms</b>: shoulders, upper arms, elbows, forearms<br><b>legs</b>: thighs, knees, shins<br><b>torso</b>: chest, abdomen</div><div><h3>Подлокации (1d6):</h3>Поле <b>Подлокации (1d6)</b> у любой зоны — таблица для дополнительного броска 1d6 при попадании (через сниппет <b>sub-location.js</b>). Каждая из 6 ячеек — либо ссылка на дочернюю зону (с тем же <b>Родителем</b>), либо свободный ввод (имя/DR/hint). Кнопка <b>+</b> справа создаёт новую дочернюю custom-зону и сразу привязывает её к ячейке. <b>DR прибавляется к параметру dr движковой функции damageRoll</b> — реально вычитается из урона (с учётом drDivisor) и попадает в <code>&lt;mod&gt;-NDR&lt;/mod&gt;</code> результата. Кастомные значения переопределяют дефолтные ячейки arms/legs/skull/face поштучно: задайте только нужные строки, остальные возьмутся из дефолта.</div><div><h3>Специфические коды:</h3>vitals, spine, ear, jaw, nose, wings, tail, weapon, bigjoint, smalljoint, limbvenus, neckvenus</div><div style="margin-bottom:20px; padding:12px; background:rgba(66,139,202,0.1); border-radius:6px; border:1px solid rgba(66,139,202,0.2);"><label style="cursor:pointer; display:flex; align-items:center; gap:10px; margin:0;"><input type="checkbox" id="gc-hl-show-sub-meta" ${localStorage.getItem("gcHlShowSubMeta") === "yes" ? "checked" : ""} style="margin:0; width:16px; height:16px;"><b style="font-size:13px;">Показывать параметры подлокаций на листе</b></label></div>`).appendTo($container);
+    var $help = $("<help></help>").html(`<div><h2>Как это работает:</h2>• Для <b>правки</b> стандартной зоны впишите её Код (ID) и добавьте нужные поля через меню <b>+</b>.<br>• Для <b>создания</b> новой зоны нажмите кнопку внизу списка и включите <b>Новая зона</b>.<br>• <b>Родитель (ID)</b> — ID зоны, внутрь которой будет вложена текущая.<br>• <b>Является родителем</b> — помечает зону как контейнер для других подлокаций.</div><div><h3>Стандартные коды зон:</h3>skull, face, eyes, neck, torso, groin, arms, hands, legs, feet</div><div><h3>Подлокации:</h3><b>arms</b>: shoulders, upper arms, elbows, forearms<br><b>legs</b>: thighs, knees, shins<br><b>torso</b>: chest, abdomen</div><div><h3>Подлокации (1d6):</h3>Поле <b>Подлокации (1d6)</b> — справочная таблица 1d6 у зоны: каждая из 6 ячеек — либо ссылка на дочернюю зону (с тем же <b>Родителем</b>), либо свободный ввод (имя/DR/hint). Кнопка <b>+</b> справа создаёт новую дочернюю custom-зону и сразу привязывает её к ячейке. В бросок атаки эти таблицы сейчас не подставляются: доп. бросок 1d6 на подлокацию делает all-сниппет «Подлокации» (вкладка «Все листы») по своим таблицам — LT100 либо настраиваемым в его меню.</div><div><h3>Специфические коды:</h3>vitals, spine, ear, jaw, nose, wings, tail, weapon, bigjoint, smalljoint, limbvenus, neckvenus</div><div style="margin-bottom:20px; padding:12px; background:rgba(66,139,202,0.1); border-radius:6px; border:1px solid rgba(66,139,202,0.2);"><label style="cursor:pointer; display:flex; align-items:center; gap:10px; margin:0;"><input type="checkbox" id="gc-hl-show-sub-meta" ${localStorage.getItem("gcHlShowSubMeta") === "yes" ? "checked" : ""} style="margin:0; width:16px; height:16px;"><b style="font-size:13px;">Показывать параметры подлокаций на листе</b></label></div>`).appendTo($container);
 
     $container.find("#gc-hl-show-sub-meta").on("change", function() {
       localStorage.setItem("gcHlShowSubMeta", this.checked ? "yes" : "no");
@@ -359,12 +351,13 @@
       $listWrap.empty();
       list.forEach(function(loc, idx) {
         var $zone = $("<div class='zone-block'></div>").appendTo($listWrap);
-        var isOpen = openZones.has(idx);
-        var $header = $(`<div class='zone-header'><i class="fa fa-caret-${isOpen ? 'down' : 'right'}" style="margin-right:12px; color:#ccc"></i><span class='zone-name'>${loc.name || loc.code || 'Без названия'}</span><div class='node-actions'><i class="fa fa-plus-circle" title="Добавить поле"></i><i class="fa fa-trash" title="Удалить зону"></i></div></div>`).appendTo($zone);
+        var isOpen = openZones.has(loc.code);
+        var $header = $(`<div class='zone-header'><i class="fa fa-caret-${isOpen ? 'down' : 'right'}" style="margin-right:12px; color:#ccc"></i><span class='zone-name'></span><div class='node-actions'><i class="fa fa-plus-circle" title="Добавить поле"></i><i class="fa fa-trash" title="Удалить зону"></i></div></div>`).appendTo($zone);
+        $header.find('.zone-name').text(loc.name || loc.code || 'Без названия');
         $header.on("click", function(e) {
           if ($(e.target).hasClass('fa-plus-circle')) { showAddMenu($(e.target), idx); e.stopPropagation(); return; }
-          if ($(e.target).hasClass('fa-trash')) { if(confirm("Удалить зону?")) { list.splice(idx, 1); if (typeof window.charCalcDR === "function") window.charCalcDR(); render(); } e.stopPropagation(); return; }
-          isOpen = !isOpen; if (isOpen) openZones.add(idx); else openZones.delete(idx); render();
+          if ($(e.target).hasClass('fa-trash')) { if(confirm("Удалить зону?")) { openZones.delete(loc.code); list.splice(idx, 1); render(); } e.stopPropagation(); return; }
+          isOpen = !isOpen; if (isOpen) openZones.add(loc.code); else openZones.delete(loc.code); render();
         });
         if (isOpen) {
           var $body = $("<div class='zone-body'></div>").appendTo($zone);
@@ -381,7 +374,8 @@
       });
       $("<div style='text-align:center; padding:10px;'><button>+ Создать новую зону</button></div>").on("click", function() {
           var nextId = 1; while(list.some(l => l.code === "custom_" + nextId)) nextId++;
-          list.push({ code: "custom_" + nextId, custom: true, dr: 0 }); openZones.add(list.length - 1); render();
+          var newCode = "custom_" + nextId;
+          list.push({ code: newCode, custom: true, dr: 0 }); openZones.add(newCode); render();
       }).appendTo($listWrap);
     }
 
@@ -474,7 +468,7 @@
             list.push({ code: newCode, custom: true, dr: 0, parent: loc.code });
             loc.subTable = loc.subTable || {};
             loc.subTable[roll] = newCode;
-            openZones.add(list.length - 1);
+            openZones.add(newCode);
             render();
           })
           .appendTo($row);
@@ -531,7 +525,7 @@
             else if (key === "custom" || key === "isParent" || key === "noInheritDR") initVal = true;
             else initVal = "";
             list[idx][key] = initVal;
-            openZones.add(idx); render(); if (typeof window.charCalcDR === "function") window.charCalcDR();
+            openZones.add(loc.code); render();
           }).appendTo($popup);
         }
       });
@@ -540,13 +534,15 @@
 
     function deleteField(idx, key) {
       delete list[idx][key];
-      if (typeof window.charCalcDR === "function") window.charCalcDR();
     }
 
     function updateValue(idx, key, val) {
       var loc = list[idx];
       if (!loc || !key) return;
-      if (key === "code") loc.code = val;
+      if (key === "code") {
+        if (openZones.has(loc.code)) { openZones.delete(loc.code); openZones.add(val); }
+        loc.code = val;
+      }
       else if (key === "name") loc.name = (val === null || val === "") ? null : val;
       else if (key === "toHit") loc.toHit = (val === "" || val === null) ? null : +val;
       else if (key === "dr") loc.dr = (val === "" || val === null) ? null : +val;
@@ -555,12 +551,11 @@
       else if (key === "custom") loc.custom = (val === "yes" || val === "Да" || val === true);
       else if (key === "noInheritDR") loc.noInheritDR = (val === "yes" || val === "Да" || val === true);
       else if (key === "hint") loc.hint = (val === null || val === "") ? null : val;
-      else if (key === "roll") { 
-        if (Array.isArray(val)) loc.roll = val; 
-        else if (!val) loc.roll = null; 
-        else loc.roll = val.split(/[\s,]+/).map(s => +s.trim()).filter(n => !isNaN(n)); 
+      else if (key === "roll") {
+        if (Array.isArray(val)) loc.roll = val;
+        else if (!val) loc.roll = null;
+        else loc.roll = val.split(/[\s,]+/).map(s => +s.trim()).filter(n => !isNaN(n));
       }
-      if (typeof window.charCalcDR === "function") window.charCalcDR();
     }
   }
 })();

@@ -1,4 +1,4 @@
-// Системный сниппет с общими хелперами для остальных. Подключать ВТОРЫМ.
+// Системный сниппет с общими хелперами для остальных. Подключать ВТОРЫМ. (v1.1.0)
 /* Что делает: экспортирует window.gcUtils и инициализирует общие namespace'ы.
    Все остальные сниппеты опираются на это — без gc-utils они упадут.
 
@@ -6,7 +6,7 @@
      STD_ZONE_CODES                 — массив стандартных кодов зон.
      gcLog(level, msg[, err])       — console + window.gcErrors[].
      getToolLocation()              — код зоны из открытой модалки атаки
-                                      (учитывает loc='random').
+                                      (loc='random' → null: код неизвестен до броска).
      readDRFromDom(code)            — DR из <locations-list> по коду зоны.
      loadBase64Slot(tagName)        — JSON.parse(base64) из <tagName> слота.
      saveBase64Slot(tagName, value) — обратное (создаёт слот если нет).
@@ -53,7 +53,7 @@
     var $sel = $("modalpopup #c_location option:selected, .tool-popup #c_location option:selected").first();
     if (!$sel.length) return null;
     var loc = $sel.attr("location");
-    if (loc === "random") return window.__gcLastRandomLocation || null;
+    if (loc === "random") return null;
     return loc || null;
   }
 

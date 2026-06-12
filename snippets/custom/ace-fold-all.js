@@ -1,4 +1,4 @@
-// QoL для Ace-редакторов <gc-script> / <gc-style-less>: автосворачивание bundle.
+// QoL для Ace-редакторов <gc-script> / <gc-style-less>: автосворачивание bundle. (v1.1.0)
 /* Что делает: при открытии Ace-редактора (кнопки SCRIPT и CSS/LESS)
    автоматически сворачивает блоки bundle по маркерам:
      // === SECTION-START ===      ↔   // === SECTION-END ===  		(для JS)
@@ -14,8 +14,17 @@
    разворачивает блок назад (стандартный Ace fold-widget этого не делает,
    т.к. мои folds сделаны через addFold напрямую, минуя mode.foldingRules). */
 (function () {
+  (window.gcSnippetMeta = window.gcSnippetMeta || {})["ace-fold-all"] = {
+    label: "Quality of Life",
+    desc: "Улучшения UX: ace-fold-all — автосворачивание всех блоков при открытии " +
+          "Ace-редактора <gc-script>/<gc-basic-xml> через foldAll() + marker-based fold " +
+          "для <gc-style-less> по START/END комментариям (с MutationObserver на gutter " +
+          "для persistent widget).",
+    category: "qol"
+  };
   if (window.GC_DISABLED_SNIPPETS && window.GC_DISABLED_SNIPPETS.has("ace-fold-all")) return;
   window.gcInternal = window.gcInternal || { patched: {}, bound: {} };
+  var gi = window.gcInternal;
   if (window.gcInternal.patched.aceFoldAll || typeof window.createMentorAce !== "function") return;
   window.gcInternal.patched.aceFoldAll = true;
 
@@ -36,8 +45,20 @@
     console.log.apply(console, args);
   }
 
+  var gcGutterRegistry = (gi.bound.aceGutters = gi.bound.aceGutters || []);
+  function sweepDetachedGutters() {
+    for (var i = gcGutterRegistry.length - 1; i >= 0; i--) {
+      var rec = gcGutterRegistry[i];
+      if (!rec.el || !document.contains(rec.el)) {
+        if (rec.cleanup) { try { rec.cleanup(); } catch (e) {} }
+        gcGutterRegistry.splice(i, 1);
+      }
+    }
+  }
+
   var origCreate = window.createMentorAce;
   window.createMentorAce = function (objId, mode) {
+    sweepDetachedGutters();
     var editor = origCreate.apply(this, arguments);
     var skipNames = skipNamesForMode(mode);
     setTimeout(function () { try { applyInitialFolds(editor, skipNames, mode); } catch (e) { dbg("initialFolds err", e); } }, 150);
@@ -168,8 +189,15 @@
           dbg("cleanup done");
         } catch (e) {}
       };
+      var rec = { el: gutterEl, cleanup: cleanup };
+      gcGutterRegistry.push(rec);
+      var unregister = function () {
+        cleanup();
+        var idx = gcGutterRegistry.indexOf(rec);
+        if (idx >= 0) gcGutterRegistry.splice(idx, 1);
+      };
       if (typeof editor.on === "function") {
-        try { editor.on("destroy", cleanup); } catch (e) {}
+        try { editor.on("destroy", unregister); } catch (e) {}
       }
     }, POLL_MS);
   }
