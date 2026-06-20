@@ -1463,7 +1463,7 @@
     return h('div', { style: 'margin:2px 0 0;' },
       h('span', { class: 'gm-badge ' + m.cls }, m.label));
   }
-  
+
   const CATEGORY_ORDER = ['service', 'feature', 'fix', 'homebrew'];
   function renderCategoryFilterBar(snippets, filterSet, excludeHomebrew) {
     const present = new Set((snippets || []).map((s) => s.category).filter(Boolean));
