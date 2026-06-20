@@ -4,7 +4,7 @@
     {
       "id": "initiative-tracker",
       "name": "Трекер инициативы",
-      "version": "1.0.0",
+      "version": "1.0.1",
       "category": "feature",
       "description": "Трекер инициативы. Поддерживается импорт персонажей с доски. Кнопка справа снизу, пока что фиксированная. Гибридное хранение: LocalStorage + опциональная синхронизация через ↑/↓, запись идёт в <gc-init-state>.",
       "file": "initiative-tracker.js"

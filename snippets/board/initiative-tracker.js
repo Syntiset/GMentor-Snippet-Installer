@@ -1,4 +1,4 @@
-// initiative-tracker.js — трекер инициативы для ГМских досок. (v1.0.0)
+// Трекер инициативы для ГМских досок. (v1.0.1)
 /* Поддерживается импорт персонажей с доски. Кнопка справа снизу, пока что фиксированная. Гибридное 
    хранение: LocalStorage + опциональная синхронизация через ↑/↓, запись идёт в <gc-init-state>. */
 
@@ -8,6 +8,7 @@
       var el = document.getElementById(id);
       if (el && el.parentNode) el.parentNode.removeChild(el);
     });
+    if (window.__gcInitTrackerHashHandler) window.removeEventListener('hashchange', window.__gcInitTrackerHashHandler);
   }
   window.__gcInitTrackerMounted = true;
 
@@ -262,8 +263,10 @@
       if (isNaN(val)) return;
       var bid = currentBoardId();
       var s = loadState(bid);
+      var cur = s.chars[s.currentIdx];
       s.chars.push({ name: name.trim(), init: val });
       s.chars.sort(function (a, b) { return b.init - a.init; });
+      if (cur) { var ci = s.chars.indexOf(cur); if (ci >= 0) s.currentIdx = ci; }
       saveState(bid, s);
       render();
     });
@@ -273,6 +276,7 @@
       if (!board) return;
       var bid = board.id || currentBoardId();
       var s = loadState(bid);
+      var cur = s.chars[s.currentIdx];
       var existingNames = {};
       s.chars.forEach(function (c) { existingNames[c.name] = true; });
       var added = 0, skipped = 0, noSpeed = 0;
@@ -290,6 +294,7 @@
         added++;
       });
       s.chars.sort(function (a, b) { return b.init - a.init; });
+      if (cur) { var ci = s.chars.indexOf(cur); if (ci >= 0) s.currentIdx = ci; }
       saveState(bid, s);
       render();
       var msg = added + ' добавлено';
@@ -352,5 +357,6 @@
   mountToggle();
   mountPanel();
   render();
+  window.__gcInitTrackerHashHandler = render;
   window.addEventListener('hashchange', render);
 })();
