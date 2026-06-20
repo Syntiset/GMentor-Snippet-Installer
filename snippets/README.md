@@ -81,6 +81,8 @@
 | `kyos-full.js` | Полная поддержка KYOS: стоимость ST/HP + отключение подсвета HP; опц. цена Lifting/Striking ST (7/1 за ур.). | Фикс |
 | `cr-mod.js` | Автоматический учёт штрафов самоконтроля от активных состояний. | Фича |
 | `alt-cut.js` | Альтернативная таблица swing-урона (основанно по [No School Grognard](https://noschoolgrognard.blogspot.com/2013/04/adjusting-swing-damage-in-dungeon.html), +1 за 2 ST). | Хоумбрю |
+| `ui-fixes.js` | Копилка мелких фиксов интерфейса. | Фикс |
+| `techniques-as-spell.js` | Магические техники (Тауматология): чинит их уровень (движок ломает его для боевых заклинаний) и показывает рядом с магией, в разделе «Заклинания». | Фича |
 
 Манифест — [`all/_manifest.json`](./all/_manifest.json).
 

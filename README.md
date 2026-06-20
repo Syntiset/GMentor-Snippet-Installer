@@ -11,7 +11,7 @@
 <p align="center">
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-blue.svg?style=flat-square" alt="License: MIT" /></a>
   <a href="#установка"><img src="https://img.shields.io/badge/Version-1.1.0-brightgreen.svg?style=flat-square" alt="Version 1.1.0" /></a>
-  <a href="./releases/Bundle/gmentor-bundle.js"><img src="https://img.shields.io/badge/Bundle-v1.1.0-orange.svg?style=flat-square" alt="Bundle v1.1.0" /></a>
+  <a href="./releases/Bundle/gmentor-bundle.js"><img src="https://img.shields.io/badge/Bundle-v1.1.1-orange.svg?style=flat-square" alt="Bundle v1.1.1" /></a>
   <a href="#установка"><img src="https://img.shields.io/badge/Platforms-Windows%20%7C%20Linux-lightgrey.svg?style=flat-square" alt="Platforms" /></a>
 </p>
 
