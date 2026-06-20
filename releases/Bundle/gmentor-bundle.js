@@ -1,5 +1,5 @@
 { // === GMENTOR-BUNDLE-START ===
-// Bundle version: 1.1.0+dev
+// Bundle version: 1.1.1
 
 (function () {
   window.gcReRunHooks = window.gcReRunHooks || [];
@@ -56,6 +56,7 @@ try {
     "dmg-scale":      { snippets: ["dmg-scale"],         requires: [],               parent: null },
     "cf-mod":         { snippets: ["cf-mod"],            requires: [],               parent: null },
     "spell-attr":     { snippets: ["spell-attr"],        requires: [],               parent: null },
+    // SCAFFOLD-GROUP-ANCHOR
   };
 
   function loadDisabledGroups() {
@@ -229,16 +230,13 @@ try {
 
 // ----- GC-UTILS (системные хелперы) -----
 try {
-// Системный сниппет с общими хелперами для остальных. Подключать ВТОРЫМ. (v1.1.0)
+// Системный сниппет с общими хелперами для остальных. Подключать ВТОРЫМ. (v1.1.1)
 /* Что делает: экспортирует window.gcUtils и инициализирует общие namespace'ы.
    Все остальные сниппеты опираются на это — без gc-utils они упадут.
 
    Экспорт window.gcUtils:
      STD_ZONE_CODES                 — массив стандартных кодов зон.
      gcLog(level, msg[, err])       — console + window.gcErrors[].
-     getToolLocation()              — код зоны из открытой модалки атаки
-                                      (loc='random' → null: код неизвестен до броска).
-     readDRFromDom(code)            — DR из <locations-list> по коду зоны.
      loadBase64Slot(tagName)        — JSON.parse(base64) из <tagName> слота.
      saveBase64Slot(tagName, value) — обратное (создаёт слот если нет).
 
@@ -279,24 +277,6 @@ try {
     }
   }
 
-  function getToolLocation() {
-    if (typeof $ !== "function") return null;
-    var $sel = $("modalpopup #c_location option:selected, .tool-popup #c_location option:selected").first();
-    if (!$sel.length) return null;
-    var loc = $sel.attr("location");
-    if (loc === "random") return null;
-    return loc || null;
-  }
-
-  function readDRFromDom(code) {
-    if (!code || typeof $ !== "function") return 0;
-    var safe = String(code).replace(/'/g, "\\'");
-    var $node = $("locations-list location[name='" + safe + "']").first();
-    if (!$node.length) return 0;
-    var v = parseInt($node.children("dr").first().text(), 10);
-    return isFinite(v) ? v : 0;
-  }
-
   function loadBase64Slot(tagName) {
     if (typeof gm !== "function") return null;
     var $slot = gm(tagName);
@@ -331,8 +311,6 @@ try {
   window.gcUtils = {
     STD_ZONE_CODES: STD_ZONE_CODES,
     gcLog: gcLog,
-    getToolLocation: getToolLocation,
-    readDRFromDom: readDRFromDom,
     loadBase64Slot: loadBase64Slot,
     saveBase64Slot: saveBase64Slot
   };
@@ -349,7 +327,7 @@ try {
 
 // ----- FIX-MULTIPLY-ZERO -----
 try {
-// Сниппет-фикс бага движка с multiply-модификаторами. (v1.1.0)
+// Сниппет-фикс бага движка с multiply-модификаторами. (v1.1.1)
 /* Что делает: когда у advantage/effect приходит multiply-модификатор
    со значением 0 (например levels=0 при формуле DR = base * levels),
    движок возвращает строку "N*0" вместо 0. Дальше parseFloat читает
@@ -379,7 +357,7 @@ try {
     gi.patched.modifyField = true;
     var _orig = window.modifyField;
     window.modifyField = function (src, mod, type) {
-      if (type && type.indexOf("multiply") !== -1) {
+      if (type === "multiply" || type === "multiply round" || type === "multiply floor" || type === "multiply ceil") {
         if (parseFloat(src) === 0 || parseFloat(mod) === 0 || mod === 0 || mod === "0") return 0;
       }
       var res = _orig.apply(this, arguments);
@@ -427,7 +405,7 @@ try {
 
 // ----- HIT-LOCATIONS -----
 try {
-// Сниппет кастомных зон попаданий + UI-редактор «⚔ Зоны». (v1.1.0)
+// Сниппет кастомных зон попаданий + UI-редактор «⚔ Зоны». (v1.1.1)
 /* Что делает: позволяет переименовывать штатные зоны попаданий, править
    to-hit / базовый DR, удобнее добавлять свои зоны и вложения, 
    переписывать 3d6-таблицу случайного попадания, задавать тултипы и таблицы
@@ -696,16 +674,17 @@ try {
   }
 
   function defaultLocationForRoll(r) {
+    var rl = Math.random() > 0.5 ? "/l" : "/r";
     if (r <= 4)  return "skull";
     if (r === 5) return "face";
-    if (r <= 7)  return "legs";
-    if (r === 8) return "arms";
+    if (r <= 7)  return "legs/r";
+    if (r === 8) return "arms/r";
     if (r <= 10) return "torso";
     if (r === 11) return "groin";
-    if (r === 12) return "arms";
-    if (r <= 14) return "legs";
-    if (r === 15) return "hands";
-    if (r === 16) return "feet";
+    if (r === 12) return "arms/l";
+    if (r <= 14) return "legs/l";
+    if (r === 15) return "hands" + rl;
+    if (r === 16) return "feet" + rl;
     return "neck";
   }
 
@@ -1000,7 +979,7 @@ try {
 
 // ----- DR-INHERITANCE -----
 try {
-// Сниппет DR-наследования для иерархии зон + фиксы движкового DR-pipeline. (v1.1.0)
+// Сниппет DR-наследования для иерархии зон + фиксы движкового DR-pipeline. (v1.1.1)
 /* Что делает: каскадирует DR родительской зоны в её подзоны (B398-399).
    Без этого:  ставишь броню на торс — а в abdomen/vitals/groin DR=0 при попадании.
    С этим:     дочерки наследуют DR родителя и видно прямо в блоке локаций.
@@ -1016,8 +995,13 @@ try {
      - Перемещённые стандартные подзоны (loc.parent, не custom): движок
        применил к ним fullBody напрямую, а cascade добавил бы его ещё раз
        через parent.total. Вычитает заранее через adjustStdSubzoneDR.
+     - На нулевом уровне преимущества, добавляющие DR, больше не плодят
+       фантомную защиту (для корректной работы fix-multiply-zero + убирает
+       появление движкового NaN/NaN). Общий DR (full body) преимуществ
+       теперь складывается и с типизированным DR, ранее применение было 
+       только к общей строке DR.
 
-   Зависимость: hit-locations (читает window.GC_HIT_LOCATIONS_LIST).
+   Зависимость: hit-locations.
 
    Порядок подключения:
      fix-multiply-zero → hit-locations → dr-inheritance
@@ -1027,9 +1011,8 @@ try {
 (function () {
   (window.gcSnippetMeta = window.gcSnippetMeta || {})["dr-inheritance"] = {
     label: "DR-наследование",
-    desc: "Cascade DR от parent-зоны в подзоны; fullBody DR для root-level custom; " +
-          "компенсация двойного учёта fullBody. Без hit-locations работает безвредно " +
-          "(просто нет данных).",
+    desc: "Наследование DR от зоны к подзонам; общий DR складывается с типизированным;" +
+          " на нулевом уровне преимущество DR не даёт фантомной защиты.",
     category: "feature"
   };
   if (window.GC_DISABLED_SNIPPETS && window.GC_DISABLED_SNIPPETS.has("dr-inheritance")) return;
@@ -1063,6 +1046,7 @@ try {
            <amount class="nosave gc-modified-value"> — итог (level × base)
          Берёт итоговый, как движок (если интересно, то character.js:621). */
       var amtTxt = $b.find("amount, >dr:first").not(".gc-source-value").first().text() || "0";
+      if (String(amtTxt).indexOf("*") !== -1) return;
       var amt = parseInt(String(amtTxt).trim(), 10) || 0;
       total += amt;
     });
@@ -1117,14 +1101,46 @@ try {
     $ll.children("location").each(function () { walk(this, 0); });
   }
 
-  /* Обёртка charCalcDR — поверх обёртки hit-locations. После _orig DOM
-     уже содержит все зоны (custom созданы, addBaseDR отработал). Тут применяются
-     три шага: adjustStdSubzoneDR → applyFullBodyToCustomRoot → applyInheritedDR. */
+  function applyFullBodyToTypedDR() {
+    var $ll = $("locations-list"); if (!$ll.length) return;
+    $ll.find("location").each(function () {
+      var $z = $(this);
+      var $typed = $z.children("dr[type]");
+      if (!$typed.length) return;
+      var fb = getEngineAppliedFullBodyDR($z.attr("name"));
+      if (!fb) return;
+      $typed.each(function () {
+        var $d = $(this);
+        var parts = String($d.text()).split("/");
+        var a = (parseInt(parts[0], 10) || 0) + fb;
+        var b = (parts[1] !== undefined ? (parseInt(parts[1], 10) || 0) : (parseInt(parts[0], 10) || 0)) + fb;
+        $d.text(a === b ? String(a) : a + "/" + b);
+      });
+    });
+  }
+
   if (!gi.patched.drInhCharCalc && typeof window.charCalcDR === "function") {
     gi.patched.drInhCharCalc = true;
     var _origCharCalcDR = window.charCalcDR;
     window.charCalcDR = function () {
+      var detached = [];
+      if (typeof globalModifiersOn !== "undefined" && globalModifiersOn && globalModifiersOn.length) {
+        globalModifiersOn.find(">dr_bonus").each(function () {
+          var $b = $(this);
+          var a = $b.find("amount, >dr:first").not(".gc-source-value").first().text() || "0";
+          if (/\*/.test(a) || (parseInt(a, 10) || 0) === 0) {
+            var ph = document.createComment("gc-dr0");
+            $b[0].parentNode.insertBefore(ph, $b[0]);
+            detached.push([$b[0], ph]);
+            $b.detach();
+          }
+        });
+      }
       var ret = _origCharCalcDR.apply(this, arguments);
+      for (var i = 0; i < detached.length; i++) {
+        detached[i][1].parentNode.insertBefore(detached[i][0], detached[i][1]);
+        detached[i][1].parentNode.removeChild(detached[i][1]);
+      }
       try {
         var list = window.GC_HIT_LOCATIONS_LIST || [];
         if (list.length) {
@@ -1132,6 +1148,7 @@ try {
           applyFullBodyToCustomRoot(list);
           applyInheritedDR(list);
         }
+        applyFullBodyToTypedDR();
       } catch (e) {}
       return ret;
     };
@@ -1433,7 +1450,7 @@ try {
 
 // ----- DMG-SCALE (урон от характеристики) -----
 try {
-// Урон оружия от выбранной характеристики (v1.1.0)
+// Урон оружия от выбранной характеристики (v1.1.1)
 /* Урон скейлится не от ST, а от выбранной характеристики (IQ/DX/Will/...) — сниппет,
    который хорошо подойдёт для магических артефактов.
 
@@ -1520,7 +1537,7 @@ try {
           if (!$dd.length) return;
           var attr = ($dd.find('>type').text() || '').trim();
           if (!attr) return;
-          var v = parseInt(getAttr(attr), 10);
+          var v = parseInt(getAttr(attr === 'hp' ? 'hp_result' : attr === 'fp' ? 'fp_result' : attr), 10);
           if (!(v > 0)) return;
           var $ss = $w.find('>self_strength:not(.gc-source-value)');
           saved.push({ $w: $w, had: $ss.length > 0, orig: $ss.length ? $ss.text() : null });
@@ -1624,7 +1641,7 @@ try {
 
 // ----- CF-MOD (Cost Factor LT) -----
 try {
-// Cost Factor: сложение модификаторов цены из Low-Tech. (v1.0.0)
+// Cost Factor: сложение модификаторов цены из Low-Tech. (v1.0.1)
 /* Если вы знаете про Cost Factor, то зачем сюда заглядываете?))
    Ладно, теперь без шуток: в редактор модификаторов добавляет новый тип для раздела
    Цена. CF работает по правилам из LT14, при добавлении модификатора к предмету 
@@ -1715,6 +1732,10 @@ try {
       var eff = floored ? floor : sum;
       var mult = Math.round((1 + eff) * 100) / 100;
       var txt = 'Σ CF ' + (sum >= 0 ? '+' : '') + (Math.round(sum * 100) / 100) + ' → ×' + mult + (floored ? ' (порог ' + floor + ')' : '');
+      if (typeof window.getEquipmentValue === 'function') {
+        var total = window.getEquipmentValue($owner[0]);
+        if (isFinite(total)) txt += ' = $' + (Math.round(total * 100) / 100);
+      }
       var $anchor = $owner.children('description, description-loc').first();
       if (!$anchor.length) return;
       var $b = $anchor.children('.gc-cf-badge');
