@@ -1,13 +1,10 @@
-// Системный сниппет с общими хелперами для остальных. Подключать ВТОРЫМ. (v1.1.0)
+// Системный сниппет с общими хелперами для остальных. Подключать ВТОРЫМ. (v1.1.1)
 /* Что делает: экспортирует window.gcUtils и инициализирует общие namespace'ы.
    Все остальные сниппеты опираются на это — без gc-utils они упадут.
 
    Экспорт window.gcUtils:
      STD_ZONE_CODES                 — массив стандартных кодов зон.
      gcLog(level, msg[, err])       — console + window.gcErrors[].
-     getToolLocation()              — код зоны из открытой модалки атаки
-                                      (loc='random' → null: код неизвестен до броска).
-     readDRFromDom(code)            — DR из <locations-list> по коду зоны.
      loadBase64Slot(tagName)        — JSON.parse(base64) из <tagName> слота.
      saveBase64Slot(tagName, value) — обратное (создаёт слот если нет).
 
@@ -48,24 +45,6 @@
     }
   }
 
-  function getToolLocation() {
-    if (typeof $ !== "function") return null;
-    var $sel = $("modalpopup #c_location option:selected, .tool-popup #c_location option:selected").first();
-    if (!$sel.length) return null;
-    var loc = $sel.attr("location");
-    if (loc === "random") return null;
-    return loc || null;
-  }
-
-  function readDRFromDom(code) {
-    if (!code || typeof $ !== "function") return 0;
-    var safe = String(code).replace(/'/g, "\\'");
-    var $node = $("locations-list location[name='" + safe + "']").first();
-    if (!$node.length) return 0;
-    var v = parseInt($node.children("dr").first().text(), 10);
-    return isFinite(v) ? v : 0;
-  }
-
   function loadBase64Slot(tagName) {
     if (typeof gm !== "function") return null;
     var $slot = gm(tagName);
@@ -100,8 +79,6 @@
   window.gcUtils = {
     STD_ZONE_CODES: STD_ZONE_CODES,
     gcLog: gcLog,
-    getToolLocation: getToolLocation,
-    readDRFromDom: readDRFromDom,
     loadBase64Slot: loadBase64Slot,
     saveBase64Slot: saveBase64Slot
   };

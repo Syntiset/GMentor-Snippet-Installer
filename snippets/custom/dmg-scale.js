@@ -1,4 +1,4 @@
-// Урон оружия от выбранной характеристики (v1.1.0)
+// Урон оружия от выбранной характеристики (v1.1.1)
 /* Урон скейлится не от ST, а от выбранной характеристики (IQ/DX/Will/...) — сниппет,
    который хорошо подойдёт для магических артефактов.
 
@@ -85,7 +85,7 @@
           if (!$dd.length) return;
           var attr = ($dd.find('>type').text() || '').trim();
           if (!attr) return;
-          var v = parseInt(getAttr(attr), 10);
+          var v = parseInt(getAttr(attr === 'hp' ? 'hp_result' : attr === 'fp' ? 'fp_result' : attr), 10);
           if (!(v > 0)) return;
           var $ss = $w.find('>self_strength:not(.gc-source-value)');
           saved.push({ $w: $w, had: $ss.length > 0, orig: $ss.length ? $ss.text() : null });

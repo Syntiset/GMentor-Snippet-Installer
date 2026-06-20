@@ -1,4 +1,4 @@
-// Сниппет кастомных зон попаданий + UI-редактор «⚔ Зоны». (v1.1.0)
+// Сниппет кастомных зон попаданий + UI-редактор «⚔ Зоны». (v1.1.1)
 /* Что делает: позволяет переименовывать штатные зоны попаданий, править
    to-hit / базовый DR, удобнее добавлять свои зоны и вложения, 
    переписывать 3d6-таблицу случайного попадания, задавать тултипы и таблицы
@@ -267,16 +267,17 @@
   }
 
   function defaultLocationForRoll(r) {
+    var rl = Math.random() > 0.5 ? "/l" : "/r";
     if (r <= 4)  return "skull";
     if (r === 5) return "face";
-    if (r <= 7)  return "legs";
-    if (r === 8) return "arms";
+    if (r <= 7)  return "legs/r";
+    if (r === 8) return "arms/r";
     if (r <= 10) return "torso";
     if (r === 11) return "groin";
-    if (r === 12) return "arms";
-    if (r <= 14) return "legs";
-    if (r === 15) return "hands";
-    if (r === 16) return "feet";
+    if (r === 12) return "arms/l";
+    if (r <= 14) return "legs/l";
+    if (r === 15) return "hands" + rl;
+    if (r === 16) return "feet" + rl;
     return "neck";
   }
 

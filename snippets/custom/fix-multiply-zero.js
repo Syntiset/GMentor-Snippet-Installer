@@ -1,4 +1,4 @@
-// Сниппет-фикс бага движка с multiply-модификаторами. (v1.1.0)
+// Сниппет-фикс бага движка с multiply-модификаторами. (v1.1.1)
 /* Что делает: когда у advantage/effect приходит multiply-модификатор
    со значением 0 (например levels=0 при формуле DR = base * levels),
    движок возвращает строку "N*0" вместо 0. Дальше parseFloat читает
@@ -28,7 +28,7 @@
     gi.patched.modifyField = true;
     var _orig = window.modifyField;
     window.modifyField = function (src, mod, type) {
-      if (type && type.indexOf("multiply") !== -1) {
+      if (type === "multiply" || type === "multiply round" || type === "multiply floor" || type === "multiply ceil") {
         if (parseFloat(src) === 0 || parseFloat(mod) === 0 || mod === 0 || mod === "0") return 0;
       }
       var res = _orig.apply(this, arguments);

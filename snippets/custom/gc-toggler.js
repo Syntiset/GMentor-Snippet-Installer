@@ -38,6 +38,7 @@
     "dmg-scale":      { snippets: ["dmg-scale"],         requires: [],               parent: null },
     "cf-mod":         { snippets: ["cf-mod"],            requires: [],               parent: null },
     "spell-attr":     { snippets: ["spell-attr"],        requires: [],               parent: null },
+    // SCAFFOLD-GROUP-ANCHOR
   };
 
   function loadDisabledGroups() {

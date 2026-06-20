@@ -1,4 +1,4 @@
-// Сниппет DR-наследования для иерархии зон + фиксы движкового DR-pipeline. (v1.1.0)
+// Сниппет DR-наследования для иерархии зон + фиксы движкового DR-pipeline. (v1.1.1)
 /* Что делает: каскадирует DR родительской зоны в её подзоны (B398-399).
    Без этого:  ставишь броню на торс — а в abdomen/vitals/groin DR=0 при попадании.
    С этим:     дочерки наследуют DR родителя и видно прямо в блоке локаций.
@@ -14,8 +14,13 @@
      - Перемещённые стандартные подзоны (loc.parent, не custom): движок
        применил к ним fullBody напрямую, а cascade добавил бы его ещё раз
        через parent.total. Вычитает заранее через adjustStdSubzoneDR.
+     - На нулевом уровне преимущества, добавляющие DR, больше не плодят
+       фантомную защиту (для корректной работы fix-multiply-zero + убирает
+       появление движкового NaN/NaN). Общий DR (full body) преимуществ
+       теперь складывается и с типизированным DR, ранее применение было 
+       только к общей строке DR.
 
-   Зависимость: hit-locations (читает window.GC_HIT_LOCATIONS_LIST).
+   Зависимость: hit-locations.
 
    Порядок подключения:
      fix-multiply-zero → hit-locations → dr-inheritance
@@ -25,9 +30,8 @@
 (function () {
   (window.gcSnippetMeta = window.gcSnippetMeta || {})["dr-inheritance"] = {
     label: "DR-наследование",
-    desc: "Cascade DR от parent-зоны в подзоны; fullBody DR для root-level custom; " +
-          "компенсация двойного учёта fullBody. Без hit-locations работает безвредно " +
-          "(просто нет данных).",
+    desc: "Наследование DR от зоны к подзонам; общий DR складывается с типизированным;" +
+          " на нулевом уровне преимущество DR не даёт фантомной защиты.",
     category: "feature"
   };
   if (window.GC_DISABLED_SNIPPETS && window.GC_DISABLED_SNIPPETS.has("dr-inheritance")) return;
@@ -61,6 +65,7 @@
            <amount class="nosave gc-modified-value"> — итог (level × base)
          Берёт итоговый, как движок (если интересно, то character.js:621). */
       var amtTxt = $b.find("amount, >dr:first").not(".gc-source-value").first().text() || "0";
+      if (String(amtTxt).indexOf("*") !== -1) return;
       var amt = parseInt(String(amtTxt).trim(), 10) || 0;
       total += amt;
     });
@@ -115,14 +120,46 @@
     $ll.children("location").each(function () { walk(this, 0); });
   }
 
-  /* Обёртка charCalcDR — поверх обёртки hit-locations. После _orig DOM
-     уже содержит все зоны (custom созданы, addBaseDR отработал). Тут применяются
-     три шага: adjustStdSubzoneDR → applyFullBodyToCustomRoot → applyInheritedDR. */
+  function applyFullBodyToTypedDR() {
+    var $ll = $("locations-list"); if (!$ll.length) return;
+    $ll.find("location").each(function () {
+      var $z = $(this);
+      var $typed = $z.children("dr[type]");
+      if (!$typed.length) return;
+      var fb = getEngineAppliedFullBodyDR($z.attr("name"));
+      if (!fb) return;
+      $typed.each(function () {
+        var $d = $(this);
+        var parts = String($d.text()).split("/");
+        var a = (parseInt(parts[0], 10) || 0) + fb;
+        var b = (parts[1] !== undefined ? (parseInt(parts[1], 10) || 0) : (parseInt(parts[0], 10) || 0)) + fb;
+        $d.text(a === b ? String(a) : a + "/" + b);
+      });
+    });
+  }
+
   if (!gi.patched.drInhCharCalc && typeof window.charCalcDR === "function") {
     gi.patched.drInhCharCalc = true;
     var _origCharCalcDR = window.charCalcDR;
     window.charCalcDR = function () {
+      var detached = [];
+      if (typeof globalModifiersOn !== "undefined" && globalModifiersOn && globalModifiersOn.length) {
+        globalModifiersOn.find(">dr_bonus").each(function () {
+          var $b = $(this);
+          var a = $b.find("amount, >dr:first").not(".gc-source-value").first().text() || "0";
+          if (/\*/.test(a) || (parseInt(a, 10) || 0) === 0) {
+            var ph = document.createComment("gc-dr0");
+            $b[0].parentNode.insertBefore(ph, $b[0]);
+            detached.push([$b[0], ph]);
+            $b.detach();
+          }
+        });
+      }
       var ret = _origCharCalcDR.apply(this, arguments);
+      for (var i = 0; i < detached.length; i++) {
+        detached[i][1].parentNode.insertBefore(detached[i][0], detached[i][1]);
+        detached[i][1].parentNode.removeChild(detached[i][1]);
+      }
       try {
         var list = window.GC_HIT_LOCATIONS_LIST || [];
         if (list.length) {
@@ -130,6 +167,7 @@
           applyFullBodyToCustomRoot(list);
           applyInheritedDR(list);
         }
+        applyFullBodyToTypedDR();
       } catch (e) {}
       return ret;
     };

@@ -1,4 +1,4 @@
-// Cost Factor: сложение модификаторов цены из Low-Tech. (v1.0.0)
+// Cost Factor: сложение модификаторов цены из Low-Tech. (v1.0.1)
 /* Если вы знаете про Cost Factor, то зачем сюда заглядываете?))
    Ладно, теперь без шуток: в редактор модификаторов добавляет новый тип для раздела
    Цена. CF работает по правилам из LT14, при добавлении модификатора к предмету 
@@ -89,6 +89,10 @@
       var eff = floored ? floor : sum;
       var mult = Math.round((1 + eff) * 100) / 100;
       var txt = 'Σ CF ' + (sum >= 0 ? '+' : '') + (Math.round(sum * 100) / 100) + ' → ×' + mult + (floored ? ' (порог ' + floor + ')' : '');
+      if (typeof window.getEquipmentValue === 'function') {
+        var total = window.getEquipmentValue($owner[0]);
+        if (isFinite(total)) txt += ' = $' + (Math.round(total * 100) / 100);
+      }
       var $anchor = $owner.children('description, description-loc').first();
       if (!$anchor.length) return;
       var $b = $anchor.children('.gc-cf-badge');
