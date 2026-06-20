@@ -1,4 +1,4 @@
-// perdie — фикс-сниппет из пожеланий на сайте. v1.0.0
+// Фикс-сниппет из пожеланий на сайте. v1.0.1
 /* Багфикс урона «за куб» в модалке контактной атаки (toolMeleeAttack).
    Weapon Master и All-Out Attack (Strong) дают бонус за каждый куб урона. Движок
    множит его на кубы ИТОГОВОГО урона оружия (после конвертации sw+N → +1d), а
@@ -34,8 +34,11 @@
       var raw = norm($w.find('>damage:not(.gc-source-value)').text());
       var m = /\b(sw|thr)\b/i.exec(raw);
       if (m) {
-        var sel = (m[1].toLowerCase() === 'sw') ? 'damages damage-sw' : 'damages damage-thr';
-        var n = getBaseDice($(sel).text());
+        var mod = m[1].toLowerCase();
+        var ss = parseInt($w.find('>self_strength:not(.gc-source-value)').text(), 10) || 0;
+        var baseStr = (ss > 0) ? ((mod === 'sw') ? getSw(ss) : getThr(ss))
+                               : $(mod === 'sw' ? 'damages damage-sw' : 'damages damage-thr').text();
+        var n = getBaseDice(baseStr);
         if (n > 0) return n;
       }
     } catch (e) { if (window.console) console.error('[gc-fix:perdie]', e); }
@@ -110,9 +113,12 @@
     ($prev.length ? $prev : $anchor).after($row);
   }
   injectSolo();
-  var t = null;
-  new MutationObserver(function () {
-    if (t) return;
-    t = setTimeout(function () { t = null; injectSolo(); }, 200);
-  }).observe(document.documentElement, { childList: true, subtree: true });
+  if (!window.__gcPerdieObs) {
+    window.__gcPerdieObs = true;
+    var t = null;
+    new MutationObserver(function () {
+      if (t) return;
+      t = setTimeout(function () { t = null; injectSolo(); }, 200);
+    }).observe(document.documentElement, { childList: true, subtree: true });
+  }
 })();

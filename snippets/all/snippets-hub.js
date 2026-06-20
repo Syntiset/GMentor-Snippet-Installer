@@ -1,4 +1,4 @@
-// snippets-hub — ОПЦИОНАЛЬНЫЙ хаб сниппетов в настройках листа. v1.0.0
+// ОПЦИОНАЛЬНЫЙ хаб сниппетов в настройках листа. v1.0.1
 /* Собирает все установленные сниппеты в одну секцию-менюшку в штатной модалке
    настроек листа (Шестерня справа сверху, там где KYOS). */
 
@@ -12,6 +12,8 @@
     for (var i = 0; i < list.length; i++) {
       if (list[i].id === id) return list[i];
       if (list[i].sub && list[i].sub.id === id) return list[i].sub;
+      var subs = list[i].subs || [];
+      for (var j = 0; j < subs.length; j++) if (subs[j].id === id) return subs[j];
     }
     return null;
   }
@@ -33,6 +35,7 @@
     var rows = fixes.map(function (f) {
       var html = rowHtml(f, false);
       if (f.sub) html += rowHtml(f.sub, true);
+      (f.subs || []).forEach(function (s) { html += rowHtml(s, true); });
       return html;
     }).join('');
 
@@ -69,13 +72,17 @@
       var show = false; try { show = !!f.condition(); } catch (e) {}
       $sec.find(".gc-fix-row[data-row='" + f.id + "']").toggle(show);
       if (f.sub) $sec.find(".gc-fix-row[data-row='" + f.sub.id + "']").toggle(show);
+      (f.subs || []).forEach(function (s) { $sec.find(".gc-fix-row[data-row='" + s.id + "']").toggle(show); });
     });
   }
 
   injectSection();
-  var t = null;
-  new MutationObserver(function () {
-    if (t) return;
-    t = setTimeout(function () { t = null; injectSection(); }, 200);
-  }).observe(document.documentElement, { childList: true, subtree: true });
+  if (!window.__gcSnippetsHubObs) {
+    window.__gcSnippetsHubObs = true;
+    var t = null;
+    new MutationObserver(function () {
+      if (t) return;
+      t = setTimeout(function () { t = null; injectSection(); }, 200);
+    }).observe(document.documentElement, { childList: true, subtree: true });
+  }
 })();

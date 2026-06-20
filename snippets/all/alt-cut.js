@@ -1,4 +1,4 @@
-// alt-cut — хоумбрю-сниппет GMentor (таб «All chars»). v1.0.0
+// Альт-таблица swing-урона (GnD: +1 за 2 ST). v1.0.1
 /* Хоумбрю: альтернативная таблица swing-урона от noschoolgrognard (Adjusting 
    Swing Damage in Dungeon Fantasy). Swing урон растёт +1 ступень за каждые 2
    ST (медленнее RAW), убирая разрыв с thrust на высоких ST => сильные рубящие
@@ -67,9 +67,12 @@
     ($prev.length ? $prev : $anchor).after($row);
   }
   injectSolo();
-  var t = null;
-  new MutationObserver(function () {
-    if (t) return;
-    t = setTimeout(function () { t = null; injectSolo(); }, 200);
-  }).observe(document.documentElement, { childList: true, subtree: true });
+  if (!window.__gcAltCutObs) {
+    window.__gcAltCutObs = true;
+    var t = null;
+    new MutationObserver(function () {
+      if (t) return;
+      t = setTimeout(function () { t = null; injectSolo(); }, 200);
+    }).observe(document.documentElement, { childList: true, subtree: true });
+  }
 })();

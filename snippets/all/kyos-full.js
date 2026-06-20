@@ -1,4 +1,4 @@
-// kyos-full — фикс-сниппет из пожеланий на сайте. v1.0.0
+// Фикс-сниппет из пожеланий на сайте. v1.0.1
 /* Движковый KYOS-тумблер: Меняет таблицу урона (getThr/getSw) и Basic Lift, но НЕ 
    трогает пересчёты стоимости ST.
    Сниппет (при включённом движковом KYOS):
@@ -27,7 +27,6 @@
   var ADD_SM = '$&;if(isCharOption("kyos")){gm("ST_cost_modifier").html(1);gm("HP_cost_modifier").html(1);}';
   var FIND_WARN = /var toHeight = \(Math\.abs\(gm\("HP"\)\.html\(\)\)\s*\/\s*getAttr\('ST'\)\s*>\s*0\.3\);/;
   var REPL_WARN = 'var toHeight = !isCharOption("kyos") && (Math.abs(gm("HP").html()) / getAttr(\'ST\') > 0.3);';
-  var orig = null;
   function flag(id, def) { var v = localStorage.getItem('gc-fix:' + id); return v == null ? !!def : v === '1'; }
   function setFlag(id, on) { localStorage.setItem('gc-fix:' + id, on ? '1' : '0'); }
   function kyosOn() { return typeof isCharOption === 'function' && isCharOption('kyos'); }
@@ -43,14 +42,14 @@
 	try { fn = eval('(' + p2 + ')'); }
 	catch (e) { if (window.console) console.error('[gc-fix:kyos-full] eval', e); return false; }
 	if (typeof fn !== 'function') return false;
-	orig = window.charCalcStats;
+	if (window.__gcKyosOrig == null) window.__gcKyosOrig = window.charCalcStats;
 	window.charCalcStats = fn;
 	window.__gcKyosFullPatched = true;
 	return true;
   }
   function revert() {
-	if (!orig) return false;
-	window.charCalcStats = orig; orig = null; window.__gcKyosFullPatched = false;
+	if (!window.__gcKyosOrig) return false;
+	window.charCalcStats = window.__gcKyosOrig; window.__gcKyosFullPatched = false;
 	return true;
   }
 

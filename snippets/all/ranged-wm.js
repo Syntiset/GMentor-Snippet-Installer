@@ -1,4 +1,4 @@
-// ranged-wm — фикс-сниппет из пожеланий на сайте. v1.0.0
+// Фикс-сниппет из пожеланий на сайте. v1.0.1
 /* ПРИВЕДЕНИЕ К RAW: добавляет опцию «Мастер оружия» в модалку дистанционной
    атаки (в toolRangedAttack). По Basic Set преимущество Weapon Master работает не только
    с оружием ближнего боя, но и с луками. В контактной модалке движок эту опцию рисует,
@@ -97,9 +97,12 @@
     ($prev.length ? $prev : $anchor).after($row);
   }
   injectSolo();
-  var t = null;
-  new MutationObserver(function () {
-    if (t) return;
-    t = setTimeout(function () { t = null; injectSolo(); }, 200);
-  }).observe(document.documentElement, { childList: true, subtree: true });
+  if (!window.__gcRangedWmObs) {
+    window.__gcRangedWmObs = true;
+    var t = null;
+    new MutationObserver(function () {
+      if (t) return;
+      t = setTimeout(function () { t = null; injectSolo(); }, 200);
+    }).observe(document.documentElement, { childList: true, subtree: true });
+  }
 })();

@@ -1,4 +1,4 @@
-// sub-location — зоны подлокаций для модалки бросков. v1.0.0
+// sub-location — зоны подлокаций для модалки бросков. v1.0.1
 /* Добавляет в модалку бросков кнопку слева сверху (около кнопки Discord).
 
    Почему теперь тут: на общих (не-кастомных) листах нет слота <gc-script>,
@@ -487,9 +487,12 @@
   }
 
   init();
-  var t = null;
-  new MutationObserver(function () {
-    if (t) return;
-    t = setTimeout(function () { t = null; init(); }, 300);
-  }).observe(document.documentElement, { childList: true, subtree: true });
+  if (!window.__gcSubLocObs) {
+    window.__gcSubLocObs = true;
+    var t = null;
+    new MutationObserver(function () {
+      if (t) return;
+      t = setTimeout(function () { t = null; init(); }, 300);
+    }).observe(document.documentElement, { childList: true, subtree: true });
+  }
 })();

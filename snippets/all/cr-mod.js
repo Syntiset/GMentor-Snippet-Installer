@@ -1,4 +1,4 @@
-// cr-mod — feature-сниппет учёта состояний в бросках самоконтроля. v1.0.0
+// Сниппет учёта состояний в бросках самоконтроля. v1.0.1
 /* Что сниппет исправляет: при броске самоконтроля суммирует штрафы из ВСЕХ
    активных (добавленных) состояний (парсит Самоконтроль +-N в notes) и
    прибавляет к броску (напр. Опьянение −4 и Эйфория −3 = −7). В модалке CR-
@@ -96,9 +96,12 @@
     ($prev.length ? $prev : $anchor).after($row);
   }
   injectSolo();
-  var t = null;
-  new MutationObserver(function () {
-    if (t) return;
-    t = setTimeout(function () { t = null; injectSolo(); }, 200);
-  }).observe(document.documentElement, { childList: true, subtree: true });
+  if (!window.__gcCrModObs) {
+    window.__gcCrModObs = true;
+    var t = null;
+    new MutationObserver(function () {
+      if (t) return;
+      t = setTimeout(function () { t = null; injectSolo(); }, 200);
+    }).observe(document.documentElement, { childList: true, subtree: true });
+  }
 })();
