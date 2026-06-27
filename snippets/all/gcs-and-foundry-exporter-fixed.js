@@ -1,4 +1,4 @@
-// Фикс экспорта в GCS / Foundry-VTT. v1.0.0
+// Фикс экспорта в GCS / Foundry-VTT. v1.0.1
 /* Переопределяет окно «Скачать» на листе и генерит корректный GCS v5 JSON прямо в браузере.
    
    Основано на оригинальном экспортере v0.1 от Siv (Discord: siv_honor). Многое было переписано, многое 
@@ -221,7 +221,17 @@
     delete el.__rank; delete el.children;
     el.id = tid('e');
     el.description = cleanName((rusNames() && ruDesc) ? ruDesc : libEl.description);
-    if (el.weapons) el.weapons.forEach(function (w) { w.id = tid(w.id && w.id[0] === 'W' ? 'W' : 'w'); });
+    if (el.weapons) {
+      el.weapons.forEach(function (w) { w.id = tid(w.id && w.id[0] === 'W' ? 'W' : 'w'); });
+      var mLvls = $v.children("melee_weapon").map(function () { return num($(this).children("gc-level").text()); }).get();
+      var rLvls = $v.children("ranged_weapon").map(function () { return num($(this).children("gc-level").text()); }).get();
+      var mi = 0, ri = 0;
+      el.weapons.forEach(function (w) {
+        var lvl = (w.id && w.id[0] === 'W') ? rLvls[ri++] : mLvls[mi++];
+        if (lvl) { w.calc = w.calc || {}; w.calc.level = lvl; }
+        if (w.strength != null && num(w.strength) <= 0) delete w.strength;
+      });
+    }
     el.base_value = String(num($v.children("value").text()));
     var wt = $v.children("weight").text();
     if (wt) el.base_weight = /[a-zA-Zа-яА-Я]/.test(wt) ? wt : wt + " lb";
@@ -834,6 +844,7 @@
             var f = function (q) { return num(globalChar.find(q).text()); };
             var ST = f("st_result"), DX = f("dx_result"), IQ = f("iq_result"), HT = f("ht_result");
             var WILL = f("will_result"), PER = f("perception_result");
+            var FCB = f("fright_check_bonus");
             var SPEED = f("speed_result"), MOVE = f("move_result"), FP = f("fp_result"), HP = f("hp_result");
             var speedBase = (DX + HT) / 4;
             function A(id, adj, value, cost, extra) {
@@ -847,7 +858,7 @@
                 A("iq", IQ - 10, IQ, 20),
                 A("ht", HT - 10, HT, 10),
                 A("will", WILL - IQ, WILL, 5),
-                A("fright_check", 0, WILL, 2),
+                A("fright_check", FCB, WILL + FCB, 0),
                 A("per", PER - IQ, PER, 5),
                 A("vision", 0, PER, 2),
                 A("hearing", 0, PER, 2),
@@ -908,7 +919,7 @@
             var w = { id: tid("w"), sv: 1 };
             var dmg = parseDamage($w.children("damage").last().text()); if (dmg) w.damage = dmg;
             var usage = $w.children("usage").text(); if (usage) w.usage = usage;
-            var strength = $w.children("strength").text(); if (strength && strength !== "-") w.strength = strength;
+            var strength = $w.children("strength").text(); if (strength && strength !== "-" && num(strength) > 0) w.strength = strength;
             var reach = $w.children("reach").text(); if (reach && reach !== "-") w.reach = reach;
             var parry = $w.children("parry").text(); if (parry && parry !== "-") w.parry = parry;
             var block = $w.children("block").text(); if (block && block !== "-") w.block = block;
@@ -921,7 +932,7 @@
             var w = { id: tid("W"), sv: 1 };
             var dmg = parseDamage($w.children("damage").last().text()); if (dmg) w.damage = dmg;
             var usage = $w.children("usage").text(); if (usage) w.usage = usage;
-            var strength = $w.children("strength").text(); if (strength && strength !== "-") w.strength = strength;
+            var strength = $w.children("strength").text(); if (strength && strength !== "-" && num(strength) > 0) w.strength = strength;
             var accuracy = $w.children("accuracy").text(); if (accuracy) w.accuracy = accuracy;
             var range = $w.children("range").text(); if (range) w.range = range;
             var rof = $w.children("rate_of_fire").text(); if (rof) w.rate_of_fire = rof;

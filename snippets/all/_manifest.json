@@ -1,5 +1,5 @@
 {
-  "version": "1.0.2",
+  "version": "1.0.3",
   "snippets": [
     {
       "id": "snippets-hub",
@@ -13,9 +13,9 @@
     {
       "id": "gcs-and-foundry-exporter-fixed",
       "name": "Фикс экспорта GCS / Foundry-VTT",
-      "version": "1.0.0",
+      "version": "1.0.1",
       "category": "fix",
-	    "recommended": true,
+	  "recommended": true,
       "description": "Чинит экспорт персонажа в GCS и Foundry-VTT. Сниппет переопределяет окно «Скачать»: кнопки «Файл для GCS» и «Файл для Foundry-VTT» генерят корректный GCS v5 JSON прямо в браузере, остальные кнопки не трогаются. Работает на любом листе персонажа.",
       "file": "gcs-and-foundry-exporter-fixed.js"
     },
