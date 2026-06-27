@@ -83,6 +83,7 @@
 | `alt-cut.js` | Альтернативная таблица swing-урона (основанно по [No School Grognard](https://noschoolgrognard.blogspot.com/2013/04/adjusting-swing-damage-in-dungeon.html), +1 за 2 ST). | Хоумбрю |
 | `ui-fixes.js` | Копилка мелких фиксов интерфейса. | Фикс |
 | `techniques-as-spell.js` | Магические техники (Тауматология): чинит их уровень (движок ломает его для боевых заклинаний) и показывает рядом с магией, в разделе «Заклинания». | Фича |
+| `gcs-and-foundry-exporter-fixed.js` | Чинит экспорт в GCS / Foundry-VTT: правильный урон оружия (привязка к ST → `{st, base, type}`) + корректный GCS v5. Переопределяет окно «Скачать», заменяя сломанные штатные экспортёры. | Фикс |
 
 Манифест — [`all/_manifest.json`](./all/_manifest.json).
 

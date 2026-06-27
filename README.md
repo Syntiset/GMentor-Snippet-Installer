@@ -77,6 +77,10 @@ GMentor Snippet Installer — это, в первую очередь, утили
 
 
 ## 📸 Скриншоты
+<details align="center"><summary><b>Исправленный экспортер для GCS и Foundry VTT</b></summary>
+<p><img src="./docs/img/gcs-and-foundry-exporter-fixed.png" width="400"></p>
+<p><sub>Больше никаких сырых char-xml для GCS и проблемного GGA!</sub></p>
+</details>
 
 <details align="center"><summary><b>Меню «Сниппеты» на кастомном листе</b></summary>
 <p><img src="./docs/img/toggler-ui.png" width="400"></p>

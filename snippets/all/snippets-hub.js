@@ -1,4 +1,4 @@
-// ОПЦИОНАЛЬНЫЙ хаб сниппетов в настройках листа. v1.0.1
+// ОПЦИОНАЛЬНЫЙ хаб сниппетов в настройках листа. v1.0.2
 /* Собирает все установленные сниппеты в одну секцию-менюшку в штатной модалке
    настроек листа (Шестерня справа сверху, там где KYOS). */
 
@@ -19,7 +19,13 @@
   }
 
   function rowHtml(f, isSub) {
-    var hint = f.hint ? " <span class='note' title='" + String(f.hint).replace(/'/g, '&#39;') + "'><i class='fa fa-question-circle'></i></span>" : '';
+    var hint = '';
+    if (f.hint) {
+      var ht = "class='note' title='" + String(f.hint).replace(/'/g, '&#39;') + "'";
+      hint = f.link
+        ? " <a " + ht + " href='" + f.link + "' target='_blank' rel='noopener'><i class='fa fa-question-circle'></i></a>"
+        : " <span " + ht + "><i class='fa fa-question-circle'></i></span>";
+    }
     var style = isSub ? " style='margin-left:20px'" : '';
     return "<line class='gc-fix-row' data-row='" + f.id + "'" + style + "><label><input type='checkbox' class='gc-fix-cb' data-fix='" + f.id + "' " +
            (flag(f.id, f.default) ? 'checked' : '') + " /> " + f.label + "</label>" + hint + "</line>";
