@@ -1,4 +1,4 @@
-// Фикс экспорта в GCS / Foundry-VTT. v1.0.1
+// Фикс экспорта в GCS / Foundry-VTT. v1.0.2
 /* Переопределяет окно «Скачать» на листе и генерит корректный GCS v5 JSON прямо в браузере.
    
    Основано на оригинальном экспортере v0.1 от Siv (Discord: siv_honor). Многое было переписано, многое 
@@ -236,7 +236,7 @@
     var wt = $v.children("weight").text();
     if (wt) el.base_weight = /[a-zA-Zа-яА-Я]/.test(wt) ? wt : wt + " lb";
     el.quantity = num($v.children("quantity").text()) || 1;
-    var st = $v.attr("state");
+    var st = ($v.attr("state") || "").replace(/\s+/g, "_").toLowerCase();
     if (st !== "other" && st !== "not_carried") el.equipped = true;
 
     var nt = $v.children("notes").text().trim(); if (nt) el.local_notes = nt;
@@ -300,7 +300,7 @@
     var adv = globalChar.find("advantage_list");
     if (adv.length && /combat reflexes/i.test(adv.text())) b += 1;
     globalChar.find("equipment").each(function () {
-      var $e = $(this), st = $e.attr("state");
+      var $e = $(this), st = ($e.attr("state") || "").replace(/\s+/g, "_").toLowerCase();
       if (st === "other" || st === "not_carried") return;
       var desc = $e.children("description").text();
       var dl1 = ($e.children("description-loc").text() || "").split('\n')[0].trim();
@@ -450,12 +450,21 @@
     return m[1] + '/' + diff;
   }
 
-  function convUnit(s) {
-    return String(s == null ? '' : s)
-      .replace(/см/gi, 'cm').replace(/мм/gi, 'mm').replace(/км/gi, 'km')
-      .replace(/кг/gi, 'kg')
-      .replace(/г/gi, 'g').replace(/м/gi, 'm')
-      .trim();
+  function convUnit(s, kind) {
+    s = String(s == null ? '' : s).trim();
+    if (!s) return s;
+    if (kind === 'weight') {
+      s = s.replace(/кг/gi, 'kg').replace(/фунт(?:ов|а)?|фнт/gi, 'lb').replace(/ф(?=[\s.)]|$)/gi, 'lb').replace(/г/gi, 'g');
+    } else {
+      s = s.replace(/см/gi, 'cm').replace(/мм/gi, 'mm').replace(/км/gi, 'km').replace(/м/gi, 'm');
+      if (/['"]/.test(s)) return s;
+    }
+    s = s.replace(/\.+\s*$/, '').trim();
+    var m = s.match(/^([+-]?[\d.,]+)\s*(\S*)$/);
+    if (!m) return s;
+    var unit = m[2].toLowerCase();
+    var KNOWN = kind === 'weight' ? { kg: 1, g: 1, lb: 1, oz: 1 } : { cm: 1, mm: 1, m: 1, km: 1, ft: 1, in: 1 };
+    return (unit in KNOWN) ? m[1] + ' ' + unit : m[1] + ' ' + (kind === 'weight' ? 'kg' : 'cm');
   }
 
   function buildGcsExport(kind) {
@@ -466,9 +475,6 @@
     function spellRsl($v) {
       var rel = num($v.children("gc-level").text()) - charIQ;
       return "IQ" + (rel === 0 ? "" : (rel > 0 ? "+" : "") + rel);
-    }
-    function q(query) {
-        return (globalChar.find(query).text());
     }
     function zoneDr(locIdx) {
         return num(globalChar.find("locations-list>location").eq(locIdx).children("dr").first().text());
@@ -504,8 +510,8 @@
             age: globalChar.find("profile>age").text(),
             birthday: globalChar.find("profile>birthday").text(),
             gender: globalChar.find("profile>gender").text(),
-            height: convUnit(globalChar.find("profile>height").text()),
-            weight: convUnit(globalChar.find("profile>weight").text()),
+            height: convUnit(globalChar.find("profile>height").text(), 'length'),
+            weight: convUnit(globalChar.find("profile>weight").text(), 'weight'),
             hair: globalChar.find("profile>hair").text(),
             eyes: globalChar.find("profile>eyes").text(),
             skin: globalChar.find("profile>skin").text(),
@@ -514,7 +520,8 @@
             title: globalChar.find("profile>title").text(),
             religion: globalChar.find("profile>religion").text(),
             tech_level: globalChar.find("profile>tech_level").text(),
-            portrait: globalChar.find("profile>portrait").text()
+            portrait: globalChar.find("profile>portrait").text(),
+            SM: num(globalChar.find("sm_result").text())
         },
         settings: {
             page: {
@@ -817,8 +824,9 @@
                 }]
             },
             damage_progression: "basic_set",
-            default_length_units: "ft_in",
-            default_weight_units: "lb",
+            use_modifying_dice_plus_adds: true,
+            default_length_units: "cm",
+            default_weight_units: "kg",
             user_description_display: "tooltip",
             modifiers_display: "inline",
             notes_display: "inline",
@@ -846,28 +854,29 @@
             var WILL = f("will_result"), PER = f("perception_result");
             var FCB = f("fright_check_bonus");
             var SPEED = f("speed_result"), MOVE = f("move_result"), FP = f("fp_result"), HP = f("hp_result");
-            var speedBase = (DX + HT) / 4;
+            var bST = f("st"), bDX = f("dx"), bIQ = f("iq"), bHT = f("ht");
+            var bWILL = f("will"), bPER = f("perception"), bSPEED = f("speed"), bMOVE = f("move"), bFP = f("fp"), bHP = f("hp");
             function A(id, adj, value, cost, extra) {
                 var a = { attr_id: id, adj: adj, calc: { value: value, points: Math.round(adj * cost) } };
                 if (extra) for (var k in extra) a.calc[k] = extra[k];
                 return a;
             }
             return [
-                A("st", ST - 10, ST, 10),
-                A("dx", DX - 10, DX, 20),
-                A("iq", IQ - 10, IQ, 20),
-                A("ht", HT - 10, HT, 10),
-                A("will", WILL - IQ, WILL, 5),
-                A("fright_check", FCB, WILL + FCB, 0),
-                A("per", PER - IQ, PER, 5),
+                A("st", bST - 10, ST, 10),
+                A("dx", bDX - 10, DX, 20),
+                A("iq", bIQ - 10, IQ, 20),
+                A("ht", bHT - 10, HT, 10),
+                A("will", bWILL, WILL, 5),
+                A("fright_check", 0, WILL + FCB, 0),
+                A("per", bPER, PER, 5),
                 A("vision", 0, PER, 2),
                 A("hearing", 0, PER, 2),
                 A("taste_smell", 0, PER, 2),
                 A("touch", 0, PER, 2),
-                A("basic_speed", SPEED - speedBase, SPEED, 20),
-                A("basic_move", MOVE - Math.floor(SPEED), MOVE, 5),
-                A("fp", FP - HT, FP, 3, { current: FP }),
-                A("hp", HP - ST, HP, 2, { current: HP })
+                A("basic_speed", bSPEED, SPEED, 20),
+                A("basic_move", bMOVE, MOVE, 5),
+                A("fp", bFP, FP, 3, { current: FP }),
+                A("hp", bHP, HP, 2, { current: HP })
             ];
         })(),
     }
@@ -1101,9 +1110,7 @@
                 var langEn = engName.replace(/^language:\s*/i, "").trim();
                 var langRu = $v.children("name-loc").text().replace(/^язык\s*/i, "").trim();
                 rl.replacements = { Language: (rusNames() && langRu) ? langRu : langEn };
-                if (rl.prereqs && rl.prereqs.prereqs) rl.prereqs.prereqs.forEach(function (p) {
-                    if (p.name && /language talent/i.test(p.name.qualifier || "")) p.has = true;
-                });
+                delete rl.prereqs;
                 return rl;
             }
         }
@@ -1190,6 +1197,21 @@
         characterExportFile.traits = d1(stripMods(characterExportFile.traits)).concat(modConts);
     }
 
+    (function stripSm(list) {
+        (list || []).forEach(function (t) {
+            if (t.features) {
+                t.features = t.features.filter(function (f) { return !(f.type === "attribute_bonus" && String(f.attribute).toLowerCase() === "sm"); });
+                if (!t.features.length) delete t.features;
+            }
+            if (t.children) stripSm(t.children);
+        });
+    })(characterExportFile.traits);
+    function weaponBondFeature($v, hasWeapons) {
+        if (!hasWeapons) return null;
+        var n = 0;
+        $v.find("skill_level").each(function () { if ($(this).attr("type") === "add") n += num($(this).text()); });
+        return n ? { type: "skill_bonus", selection_type: "this_weapon", amount: n } : null;
+    }
     function buildEquipItem($v, kind) {
         kind = kind || "e";
         var desc = $v.children("description").text();
@@ -1200,6 +1222,8 @@
             if (kind === "E") le.id = tid("E");
             var lw = buildWeapons($v);
             if (lw.length) le.weapons = lw;
+            var lwb = weaponBondFeature($v, lw.length);
+            if (lwb) le.features = (le.features || []).concat(lwb);
             return le;
         }
         var weightTxt = ($v.children("weight").text() || "").split('/')[0].trim();
@@ -1219,7 +1243,7 @@
         var feats = buildEquipFeatures($v);
         if (feats.length) eq.features = feats;
         var ebn = featuresToBonuses(feats, dynamicDR()); if (ebn) eq.bonuses = ebn;
-        var st = $v.attr("state");
+        var st = ($v.attr("state") || "").replace(/\s+/g, "_").toLowerCase();
         if (st !== "other" && st !== "not_carried") eq.equipped = true;
         if (eq.equipped) feats.forEach(function (f) { if (f.type === "dr_bonus" && f.amount) addEquipDR(f.location, f.specialization, f.amount); });
         eq.calc = {
@@ -1230,6 +1254,8 @@
         };
         var weapons = buildWeapons($v);
         if (weapons.length) eq.weapons = weapons;
+        var ewb = weaponBondFeature($v, weapons.length);
+        if (ewb) eq.features = (eq.features || []).concat(ewb);
         return eq;
     }
 	
@@ -1249,9 +1275,22 @@
         return out;
     }
     var $eqRoot = globalChar.find("equipment_list").first();
-    characterExportFile.equipment = $eqRoot.length
-        ? walkEquip($eqRoot)
-        : globalEquipmentList.map(function (k, v) { return buildEquipItem($(v)); }).get();
+    function eqIsOther($v) { var s = ($v.attr("state") || "").replace(/\s+/g, "_").toLowerCase(); return s === "not_carried" || s === "other"; }
+    var eqCarried = [], eqOther = [];
+    if ($eqRoot.length) {
+        $eqRoot.children("equipment, equipment_container").each(function () {
+            var $v = $(this), tag = this.tagName.toLowerCase();
+            if ($v.hasClass("empty-container")) return;
+            var item;
+            if (tag === "equipment_container") { item = buildEquipItem($v, "E"); item.children = walkEquip($v); }
+            else { item = buildEquipItem($v); }
+            (eqIsOther($v) ? eqOther : eqCarried).push(item);
+        });
+    } else {
+        eqCarried = globalEquipmentList.map(function (k, v) { return buildEquipItem($(v)); }).get();
+    }
+    characterExportFile.equipment = eqCarried;
+    if (eqOther.length) characterExportFile.other_equipment = eqOther;
 		
     (function suffixDupWeapons(rows, seen) {
         (rows || []).forEach(function (r) {
@@ -1263,7 +1302,7 @@
             }
             if (r.children) suffixDupWeapons(r.children, seen);
         });
-    })(characterExportFile.equipment, {});
+    })((characterExportFile.equipment || []).concat(characterExportFile.other_equipment || []), {});
 
     if (kind === "vtt") {
         (function fixExt(nodes) {
@@ -1276,7 +1315,7 @@
                 tw += ew; tv += ev;
             });
             return [tw, tv];
-        })(characterExportFile.equipment);
+        })((characterExportFile.equipment || []).concat(characterExportFile.other_equipment || []));
 
         var bt = characterExportFile.settings && characterExportFile.settings.body_type;
         if (bt && bt.locations) bt.locations.forEach(function (loc) {
@@ -1295,8 +1334,10 @@
         });
     }
 
-    var charBio = globalChar.find("character>notes").first().text().trim();
-    if (charBio) characterExportFile.notes = [{ id: tid("n"), text: charBio }];
+    var bioParts = [];
+    globalChar.find("profile>notes, character>notes").each(function () { var t = $(this).text().trim(); if (t) bioParts.push(t); });
+    var charBio = bioParts.join("\n\n");
+    if (charBio) characterExportFile.notes = [{ id: tid("n"), type: "note", text: charBio }];
 
     if (rusNames()) {
       rusifyAll(characterExportFile.traits);
