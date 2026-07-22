@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         GMentor Snippet Installer
 // @namespace    https://github.com/Syntiset/GMentor-Snippet-Installer
-// @version      1.1.0
+// @version      1.1.1
 // @description  Установщик сниппетов gmentor.ru: бандл на кастомные листы, общие сниппеты (любой лист), сниппеты для мастерских досок
 // @author       NETango aka Syntiset
 // @match        https://gmentor.ru/*
@@ -10,12 +10,13 @@
 // @grant        GM_setValue
 // @grant        GM_getValue
 // @grant        unsafeWindow
+// @connect      cdn.jsdelivr.net
 // @connect      raw.githubusercontent.com
 // @connect      127.0.0.1
 // @connect      localhost
 // @run-at       document-idle
-// @downloadURL  https://raw.githubusercontent.com/Syntiset/GMentor-Snippet-Installer/main/releases/Plugin/distributor.user.js
-// @updateURL    https://raw.githubusercontent.com/Syntiset/GMentor-Snippet-Installer/main/releases/Plugin/distributor.user.js
+// @downloadURL  https://cdn.jsdelivr.net/gh/Syntiset/GMentor-Snippet-Installer@main/releases/Plugin/distributor.user.js
+// @updateURL    https://cdn.jsdelivr.net/gh/Syntiset/GMentor-Snippet-Installer@main/releases/Plugin/distributor.user.js
 // @homepageURL  https://github.com/Syntiset/GMentor-Snippet-Installer
 // @supportURL   https://github.com/Syntiset/GMentor-Snippet-Installer/issues
 // ==/UserScript==
@@ -24,16 +25,16 @@
   'use strict';
 
   const DEFAULTS = {
-    sourceJsUrl:   'https://raw.githubusercontent.com/Syntiset/GMentor-Snippet-Installer/main/releases/Bundle/gmentor-bundle.js',
-    sourceLessUrl: 'https://raw.githubusercontent.com/Syntiset/GMentor-Snippet-Installer/main/releases/Bundle/gmentor-bundle.less',
+    sourceJsUrl:   'https://cdn.jsdelivr.net/gh/Syntiset/GMentor-Snippet-Installer@main/releases/Bundle/gmentor-bundle.js',
+    sourceLessUrl: 'https://cdn.jsdelivr.net/gh/Syntiset/GMentor-Snippet-Installer@main/releases/Bundle/gmentor-bundle.less',
     autoPull: true,
     cachedBundle: null,
     sheetVersions: {},
-    allManifestUrl: 'https://raw.githubusercontent.com/Syntiset/GMentor-Snippet-Installer/main/snippets/all/_manifest.json',
-    allBaseUrl:     'https://raw.githubusercontent.com/Syntiset/GMentor-Snippet-Installer/main/snippets/all/',
+    allManifestUrl: 'https://cdn.jsdelivr.net/gh/Syntiset/GMentor-Snippet-Installer@main/snippets/all/_manifest.json',
+    allBaseUrl:     'https://cdn.jsdelivr.net/gh/Syntiset/GMentor-Snippet-Installer@main/snippets/all/',
     allInstalled: {},
-    boardManifestUrl: 'https://raw.githubusercontent.com/Syntiset/GMentor-Snippet-Installer/main/snippets/board/_manifest.json',
-    boardBaseUrl:     'https://raw.githubusercontent.com/Syntiset/GMentor-Snippet-Installer/main/snippets/board/',
+    boardManifestUrl: 'https://cdn.jsdelivr.net/gh/Syntiset/GMentor-Snippet-Installer@main/snippets/board/_manifest.json',
+    boardBaseUrl:     'https://cdn.jsdelivr.net/gh/Syntiset/GMentor-Snippet-Installer@main/snippets/board/',
   };
   const cfg = (k) => GM_getValue(k, DEFAULTS[k]);
   const setCfg = (k, v) => GM_setValue(k, v);
