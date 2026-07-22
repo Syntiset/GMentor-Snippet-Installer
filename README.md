@@ -10,19 +10,19 @@
 
 <p align="center">
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-blue.svg?style=flat-square" alt="License: MIT" /></a>
-  <a href="#установка"><img src="https://img.shields.io/badge/Version-1.1.0-brightgreen.svg?style=flat-square" alt="Version 1.1.0" /></a>
+  <a href="#установка"><img src="https://img.shields.io/badge/Version-1.1.1-brightgreen.svg?style=flat-square" alt="Version 1.1.1" /></a>
   <a href="./releases/Bundle/gmentor-bundle.js"><img src="https://img.shields.io/badge/Bundle-v1.1.1-orange.svg?style=flat-square" alt="Bundle v1.1.1" /></a>
   <a href="#установка"><img src="https://img.shields.io/badge/Platforms-Windows%20%7C%20Linux-lightgrey.svg?style=flat-square" alt="Platforms" /></a>
 </p>
 
 <p align="center">
-  <a href="https://raw.githubusercontent.com/Syntiset/GMentor-Snippet-Installer/main/releases/Plugin/distributor.user.js"><img src="https://img.shields.io/badge/Browser%20Plugin-FF6347?logo=tampermonkey&logoColor=white&style=flat-square" alt="Tampermonkey" /></a>
+  <a href="https://cdn.jsdelivr.net/gh/Syntiset/GMentor-Snippet-Installer@main/releases/Plugin/distributor.user.js"><img src="https://img.shields.io/badge/Browser%20Plugin-FF6347?logo=tampermonkey&logoColor=white&style=flat-square" alt="Tampermonkey" /></a>
   <a href="./releases/Windows/GMentor-Snippet-Installer-portable.exe"><img src="https://img.shields.io/badge/Windows%20Portable-0078D6?logo=windows&logoColor=white&style=flat-square" alt="Windows portable" /></a>
   <a href="./releases/Windows/GMentor-Snippet-Installer-setup.exe"><img src="https://img.shields.io/badge/Windows%20Installer-2563EB?logo=windows&logoColor=white&style=flat-square" alt="Windows Installer" /></a><br>
   <a href="./snippets/"><img src="https://img.shields.io/badge/Manual%20snippets-8B5CF6?logo=javascript&logoColor=white&style=flat-square" alt="Manual snippets" /></a>
   <a href="./releases/Linux/GMentor-Snippet-Installer.AppImage"><img src="https://img.shields.io/badge/Linux%20AppImage-FCC624?logo=linux&logoColor=black&style=flat-square" alt="Linux AppImage" /></a>
-  <a href="./releases/Linux/gmentor-snippet-installer_1.1.0_amd64.deb"><img src="https://img.shields.io/badge/Linux%20.deb-A81D33?logo=debian&logoColor=white&style=flat-square" alt="Linux .deb" /></a>
-  <a href="./releases/Linux/gmentor-snippet-installer-1.1.0.x86_64.rpm"><img src="https://img.shields.io/badge/Linux%20.rpm-EE0000?logo=redhat&logoColor=white&style=flat-square" alt="Linux .rpm" /></a>
+  <a href="./releases/Linux/gmentor-snippet-installer_1.1.1_amd64.deb"><img src="https://img.shields.io/badge/Linux%20.deb-A81D33?logo=debian&logoColor=white&style=flat-square" alt="Linux .deb" /></a>
+  <a href="./releases/Linux/gmentor-snippet-installer-1.1.1.x86_64.rpm"><img src="https://img.shields.io/badge/Linux%20.rpm-EE0000?logo=redhat&logoColor=white&style=flat-square" alt="Linux .rpm" /></a>
 </p>
 
 <p align="center">
@@ -109,7 +109,7 @@ GMentor Snippet Installer — это, в первую очередь, утили
 
 ## 📥 Установка
 
-### Tampermonkey / Violentmonkey
+### Tampermonkey / Violentmonkey (НАСТОЯТЕЛЬНО РЕКОМЕНДУЕМАЯ!)
 
 #### 1. Установите userscript-менеджер
 
@@ -122,7 +122,7 @@ GMentor Snippet Installer — это, в первую очередь, утили
 
 #### 2. Установите распространитель
 
-**В один клик:** перейдите на [distributor.user.js](https://raw.githubusercontent.com/Syntiset/GMentor-Snippet-Installer/main/releases/Plugin/distributor.user.js). Менеджер автоматически предложит установить скрипт.
+**В один клик:** перейдите на [distributor.user.js](https://cdn.jsdelivr.net/gh/Syntiset/GMentor-Snippet-Installer@main/releases/Plugin/distributor.user.js). Менеджер автоматически предложит установить скрипт.
 
 После установки менеджер проверяет обновления и подтягивает их сам.
 
@@ -166,19 +166,19 @@ chmod +x GMentor-Snippet-Installer.AppImage
 
 **`.deb`**:
 ```bash
-sudo apt install ./releases/Linux/gmentor-snippet-installer_1.1.0_amd64.deb
+sudo apt install ./releases/Linux/gmentor-snippet-installer_1.1.1_amd64.deb
 ```
 
 **`.rpm`**:
 ```bash
-sudo dnf install ./releases/Linux/gmentor-snippet-installer-1.1.0.x86_64.rpm
+sudo dnf install ./releases/Linux/gmentor-snippet-installer-1.1.1.x86_64.rpm
 ```
 
 Зависимости (`libwebkit2gtk-4.1`, `libgtk-3` и т.п.) подтянутся менеджером пакетов автоматически. Запуск через меню приложений или `gmentor-snippet-installer` в терминале.
 
 ### Источник bundle / сниппетов для standalone-приложения
 
-По умолчанию приложение тянет всё с GitHub raw — последняя стабильная версия из этого репозитория:
+По умолчанию приложение тянет всё с jsDelivr CDN — последняя стабильная версия из этого репозитория:
 
 ```
 На кастомные листы:   .../main/releases/Bundle/gmentor-bundle.{js,less}
@@ -196,8 +196,8 @@ URL'ы можно переопределить через настройки (ш
 
 Напротив каждого листа после инициации появится бейдж. Вот обозначения:
 
-- 🟢 `v1.1.0` — bundle актуальной версии, обновлять не нужно.
-- 🟡 `v1.0.0 → v1.1.0` — установлена старая версия bundle, доступно обновление.
+- 🟢 `v1.1.1` — bundle актуальной версии, обновлять не нужно.
+- 🟡 `v1.1.0 → v1.1.1` — установлена старая версия bundle, доступно обновление.
 - ⚪ `нет` — bundle не установлен.
 - 🔒 `view-only` — нет прав редактирования (листы только для просмотра), установка невозможна.
 
