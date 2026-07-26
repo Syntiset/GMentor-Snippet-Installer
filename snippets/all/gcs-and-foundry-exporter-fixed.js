@@ -1,4 +1,4 @@
-// Фикс экспорта в GCS / Foundry-VTT. v1.0.2
+// Фикс экспорта в GCS / Foundry-VTT. v1.0.3
 /* Переопределяет окно «Скачать» на листе и генерит корректный GCS v5 JSON прямо в браузере.
    
    Основано на оригинальном экспортере v0.1 от Siv (Discord: siv_honor). Многое было переписано, многое 
@@ -257,12 +257,25 @@
       var dt = $i.children("damage-type").text(); if (dt) f.specialization = dt;
       feats.push(f);
     });
+    var defMods = {};
     Array.from($v.children("attribute_bonus")).forEach(function (i) {
-      var $i = $(i), attr = $i.children("attribute").text(), amt = $i.children("amount").text();
+      var $i = $(i), attr = ($i.children("attribute").text() || '').toLowerCase(), amt = $i.children("amount").text();
       if (!attr || !amt) return;
+      if (attr === 'dodge' || attr === 'parry' || attr === 'block') {
+        var k = String(num(amt));
+        (defMods[k] = defMods[k] || []).push(attr.charAt(0).toUpperCase() + attr.slice(1));
+        return;
+      }
       var f = { type: "attribute_bonus", attribute: attr, amount: num(amt) };
       var lim = $i.children("limitation").text(); if (lim) f.limitation = lim;
       feats.push(f);
+    });
+    Object.keys(defMods).forEach(function (k) {
+      var names = defMods[k];
+      var list = names.length > 1 ? names.slice(0, -1).join(", ") + " & " + names[names.length - 1] : names[0];
+      feats.push({ type: "conditional_modifier",
+                   situation: "to " + list + " against attacks from the front or shield side",
+                   amount: num(k) });
     });
     Array.from($v.children("skill_bonus")).forEach(function (i) {
       var $i = $(i), $nm = $i.children("name"), qual = $nm.text(), amt = $i.children("amount").text();
@@ -293,26 +306,10 @@
     });
     return lines.join("\n");
   }
-
   var staticDefBonus = 0;
   function computeStaticDefBonus() {
-    var b = 0;
     var adv = globalChar.find("advantage_list");
-    if (adv.length && /combat reflexes/i.test(adv.text())) b += 1;
-    globalChar.find("equipment").each(function () {
-      var $e = $(this), st = ($e.attr("state") || "").replace(/\s+/g, "_").toLowerCase();
-      if (st === "other" || st === "not_carried") return;
-      var desc = $e.children("description").text();
-      var dl1 = ($e.children("description-loc").text() || "").split('\n')[0].trim();
-      var libEq = findLibSync("equipment", desc) || (dl1 ? findLibSync("equipment", dl1) : null);
-      var feats = libEq ? libEq.features : buildEquipFeatures($e);
-      var itemDB = 0;
-      (feats || []).forEach(function (f) {
-        if (f.type === "attribute_bonus" && /^(dodge|parry|block)$/i.test(f.attribute || "") && f.amount > itemDB) itemDB = f.amount;
-      });
-      b += itemDB;
-    });
-    return b;
+    return (adv.length && /combat reflexes/i.test(adv.text())) ? 1 : 0;
   }
 
   var DIRECTED = {
@@ -833,10 +830,12 @@
             skill_level_adj_display: "tooltip",
             show_spell_adj: true
         },
-        total_points: +globalChar.find("total_points").text(),
+        total_points: num(globalChar.find("total_points").text()) + num(globalChar.find("earn_points").text()),
         points_record: [{
-            when: convertDateIntoISO(modified_date), points: +globalChar.find("total_points").text(), reason: "Initial points"
-        }],
+            when: convertDateIntoISO(created_date), points: num(globalChar.find("total_points").text()), reason: "Initial points"
+        }].concat(num(globalChar.find("earn_points").text()) ? [{
+            when: convertDateIntoISO(modified_date), points: num(globalChar.find("earn_points").text()), reason: "Заработано"
+        }] : []),
         created_date: convertDateIntoISO(created_date), modified_date: convertDateIntoISO(modified_date),
         calc: {
             swing: globalChar.find("damages>damage-sw").text(),
