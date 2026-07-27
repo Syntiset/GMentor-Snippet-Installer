@@ -1,4 +1,4 @@
-// Фикс экспорта в GCS / Foundry-VTT. v1.0.3
+// Фикс экспорта в GCS / Foundry-VTT. v1.0.4
 /* Переопределяет окно «Скачать» на листе и генерит корректный GCS v5 JSON прямо в браузере.
    
    Основано на оригинальном экспортере v0.1 от Siv (Discord: siv_honor). Многое было переписано, многое 
@@ -28,6 +28,10 @@
   var DR_LABEL = 'Использовать динамический DR';
   var DR_HINT = 'Динамический DR брони: даётся активным бонусом и снимается toggle\'ом галки equipped у предмета. ТРЕБУЕТ МАКРОС! Файл с макросом лежит в Discord канале, переход через клик по подсказке. Выключено (по умолчанию): DR статичный, фиксированно вшит в зоны body_type и макрос не нужен.';
   function dynamicDR() { return flag(DR_ID, false); }
+  var FI_ID = 'gcs-foundry-items';
+  var FI_LABEL = 'В Foundry включены Foundry Items';
+  var FI_HINT = 'Включите, если в настройках системы GURPS (GGA) включена опция «Use Foundry Items» (снаряжение = Item\'ы). В этом режиме GGA задваивает содержимое контейнеров (вес и цена вложенных предметов считаются дважды) — экспорт отдаёт контейнерам собственные вес/цену, чтобы итог сошёлся. При выключенной опции не трогайте: иначе вес контейнера, наоборот, уменьшится.';
+  function foundryItems() { return flag(FI_ID, false); }
   var nameMap = null;
   function buildNameMap() {
     if (nameMap) return nameMap;
@@ -971,6 +975,26 @@
         var notes = $v.children("notes").text(); if (notes) sk.notes = notes;
         return sk;
     }
+    function buildTechnique($v) {
+        var tq = {
+            id: tid("q"),
+            name: cleanName(rusNames() ? ($v.children("name-loc").text() || $v.children("name").text()) : $v.children("name").text()),
+            difficulty: normDiff($v.children("difficulty").text()),
+            points: num($v.children("points").text()),
+            calc: { level: num($v.children("gc-level").text()) }
+        };
+        var dt = ($v.children("default").children("type").text() || "").toLowerCase();
+        if (dt) {
+            tq.default = { type: dt };
+            var dn = $v.children("default").children("name").text();
+            tq.default.name = dn || dt.toUpperCase();
+            var dm = $v.children("default").children("modifier").text(); if (dm && num(dm) !== 0) tq.default.modifier = num(dm);
+        }
+        var base = tq.default ? tq.default.name : "";
+        var mod = tq.default && tq.default.modifier ? tq.default.modifier : 0;
+        tq.calc.rsl = base ? base + (mod > 0 ? "+" : "") + (mod ? mod : "+0") : String(tq.points);
+        return tq;
+    }
     function walkSkills($c) {
         var out = [];
         $c.children().each(function () {
@@ -981,6 +1005,8 @@
                 out.push({ id: tid("S"), name: cleanName(rusNames() ? (ru || en) : (en || ru)), children: walkSkills($v) });
             } else if (tag === "skill") {
                 out.push(buildSkill($v));
+            } else if (tag === "technique") {
+                out.push(buildTechnique($v));
             }
         });
         return out;
@@ -988,25 +1014,8 @@
     var $skRoot = globalChar.find("skill_list").first();
     characterExportFile.skills = $skRoot.length
         ? walkSkills($skRoot)
-        : globalSkillsList.map(function (k, v) { return buildSkill($(v)); }).get();
-
-    globalTechniqueList.each(function (k, v) {
-        var $v = $(v);
-        var tq = {
-            id: tid("q"),
-            name: cleanName(rusNames() ? ($v.find(">name-loc").text() || $v.find(">name").text()) : $v.find(">name").text()),
-            difficulty: normDiff($v.find(">difficulty").text()),
-            points: num($v.find(">points").text()),
-            calc: { level: num($v.find(">gc-level").text()), rsl: $v.find(">points").text() }
-        };
-        var dt = ($v.find(">default>type").text() || "").toLowerCase();
-        if (dt) {
-            tq.default = { type: dt };
-            var dn = $v.find(">default>name").text(); if (dn) tq.default.name = dn;
-            var dm = $v.find(">default>modifier").text(); if (dm && num(dm) !== 0) tq.default.modifier = num(dm);
-        }
-        characterExportFile.skills.push(tq);
-    });
+        : globalSkillsList.map(function (k, v) { return buildSkill($(v)); }).get()
+            .concat(globalTechniqueList.map(function (k, v) { return buildTechnique($(v)); }).get());
 
 
     function buildSpell($v) {
@@ -1309,8 +1318,13 @@
             (nodes || []).forEach(function (n) {
                 var bw = parseFloat(n.base_weight) || 0, bv = num(n.base_value) || 0, q = n.quantity || 1;
                 var child = n.children ? fixExt(n.children) : [0, 0];
-                var ew = bw * q + child[0], ev = bv * q + child[1];
-                if (n.calc) { n.calc.extended_weight = ew + " lb"; n.calc.extended_value = ev; }
+                var ow = bw * q, ov = bv * q;
+                var ew = ow + child[0], ev = ov + child[1];
+                var ownOnly = n.children && foundryItems();
+                if (n.calc) {
+                    n.calc.extended_weight = (ownOnly ? ow : ew) + " lb";
+                    n.calc.extended_value = ownOnly ? ov : ev;
+                }
                 tw += ew; tv += ev;
             });
             return [tw, tv];
@@ -1408,6 +1422,9 @@
     }, {
       id: DR_ID, default: false, recalc: false, label: DR_LABEL, hint: DR_HINT, link: 'https://discord.gg/JsAxE79pU9',
       apply: function () { return true; }, revert: function () { return true; }
+    }, {
+      id: FI_ID, default: false, recalc: false, label: FI_LABEL, hint: FI_HINT,
+      apply: function () { return true; }, revert: function () { return true; }
     }]
   });
 
@@ -1446,6 +1463,9 @@
     }
     if (!document.getElementById('gc-fixrow-' + DR_ID)) {
       $('#gc-fixrow-' + RUS_ID).after(subRow(DR_ID, DR_LABEL, DR_HINT, null, 'https://discord.gg/JsAxE79pU9'));
+    }
+    if (!document.getElementById('gc-fixrow-' + FI_ID)) {
+      $('#gc-fixrow-' + DR_ID).after(subRow(FI_ID, FI_LABEL, FI_HINT, null));
     }
   }
   injectSolo();
