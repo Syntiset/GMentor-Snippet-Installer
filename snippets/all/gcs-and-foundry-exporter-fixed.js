@@ -1,4 +1,4 @@
-// Фикс экспорта в GCS / Foundry-VTT. v1.0.4
+// Фикс экспорта в GCS / Foundry-VTT. v1.0.5
 /* Переопределяет окно «Скачать» на листе и генерит корректный GCS v5 JSON прямо в браузере.
    
    Основано на оригинальном экспортере v0.1 от Siv (Discord: siv_honor). Многое было переписано, многое 
@@ -28,10 +28,6 @@
   var DR_LABEL = 'Использовать динамический DR';
   var DR_HINT = 'Динамический DR брони: даётся активным бонусом и снимается toggle\'ом галки equipped у предмета. ТРЕБУЕТ МАКРОС! Файл с макросом лежит в Discord канале, переход через клик по подсказке. Выключено (по умолчанию): DR статичный, фиксированно вшит в зоны body_type и макрос не нужен.';
   function dynamicDR() { return flag(DR_ID, false); }
-  var FI_ID = 'gcs-foundry-items';
-  var FI_LABEL = 'В Foundry включены Foundry Items';
-  var FI_HINT = 'Включите, если в настройках системы GURPS (GGA) включена опция «Use Foundry Items» (снаряжение = Item\'ы). В этом режиме GGA задваивает содержимое контейнеров (вес и цена вложенных предметов считаются дважды) — экспорт отдаёт контейнерам собственные вес/цену, чтобы итог сошёлся. При выключенной опции не трогайте: иначе вес контейнера, наоборот, уменьшится.';
-  function foundryItems() { return flag(FI_ID, false); }
   var nameMap = null;
   function buildNameMap() {
     if (nameMap) return nameMap;
@@ -236,9 +232,8 @@
         if (w.strength != null && num(w.strength) <= 0) delete w.strength;
       });
     }
-    el.base_value = String(num($v.children("value").text()));
-    var wt = $v.children("weight").text();
-    if (wt) el.base_weight = /[a-zA-Zа-яА-Я]/.test(wt) ? wt : wt + " lb";
+    el.base_value = String(eqValue($v));
+    if ($v.children("weight").text()) el.base_weight = eqWeight($v) + " lb";
     el.quantity = num($v.children("quantity").text()) || 1;
     var st = ($v.attr("state") || "").replace(/\s+/g, "_").toLowerCase();
     if (st !== "other" && st !== "not_carried") el.equipped = true;
@@ -350,6 +345,22 @@
     return kind + s;
   }
   function num(v) { var n = parseFloat(String(v == null ? '' : v).replace(',', '.')); return isFinite(n) ? n : 0; }
+
+  function wf($w, tag) {
+    var $t = $w.children(tag), $m = $t.filter(".gc-modified-value");
+    return (($m.length ? $m : $t).last().text() || "").trim();
+  }
+  function round5(n) { return Math.round(n * 100000) / 100000; }
+  function eqValue($v) {
+    var q = num($v.children("quantity").text()) || 1;
+    if (typeof getEquipmentValue === "function") return round5(num(getEquipmentValue($v[0])) / q);
+    return num($v.children("value").text());
+  }
+  function eqWeight($v) {
+    var q = num($v.children("quantity").text()) || 1;
+    if (typeof getEquipmentWeight === "function") return round5(num(getEquipmentWeight($v[0])) / q);
+    return num(($v.children("weight").text() || "").split('/')[0]);
+  }
   
   function cleanName(s) { return (typeof s === "string" ? s.trim() : "") || "-"; }
   
@@ -901,21 +912,21 @@
 
     function weaponCalc($w) {
         var c = {};
-        var lvl = $w.children("gc-level").text(); if (lvl) c.level = num(lvl);
-        var dres = $w.children("damage-result").text();
+        var lvl = wf($w, "gc-level"); if (lvl) c.level = num(lvl);
+        var dres = wf($w, "damage-result");
         if (dres) c.damage = dres.replace(/\s+/g, " ").trim();
         else {
-            var draw = $w.children("damage").last().text().replace(/\s+/g, " ").trim();
+            var draw = wf($w, "damage").replace(/\s+/g, " ").trim();
             if (draw && !/\b(sw|thr)\b/i.test(draw)) c.damage = draw;
         }
         if (lvl) {
             var lv = num(lvl);
-            var pStr = $w.children("parry").text();
+            var pStr = wf($w, "parry");
             if (pStr && pStr !== "No" && pStr !== "-") {
                 var pm = parseInt(pStr, 10);
                 if (!isNaN(pm)) c.parry = String(Math.floor(lv / 2) + 3 + pm + staticDefBonus) + pStr.replace(/[+-]?\d+/, "").trim();
             }
-            var bStr = $w.children("block").text();
+            var bStr = wf($w, "block");
             if (bStr && bStr !== "No" && bStr !== "-") {
                 var bm = parseInt(bStr, 10);
                 if (!isNaN(bm)) c.block = String(Math.floor(lv / 2) + 3 + bm + staticDefBonus);
@@ -929,12 +940,12 @@
         $container.children("melee_weapon").each(function () {
             var $w = $(this);
             var w = { id: tid("w"), sv: 1 };
-            var dmg = parseDamage($w.children("damage").last().text()); if (dmg) w.damage = dmg;
-            var usage = $w.children("usage").text(); if (usage) w.usage = usage;
-            var strength = $w.children("strength").text(); if (strength && strength !== "-" && num(strength) > 0) w.strength = strength;
-            var reach = $w.children("reach").text(); if (reach && reach !== "-") w.reach = reach;
-            var parry = $w.children("parry").text(); if (parry && parry !== "-") w.parry = parry;
-            var block = $w.children("block").text(); if (block && block !== "-") w.block = block;
+            var dmg = parseDamage(wf($w, "damage")); if (dmg) w.damage = dmg;
+            var usage = wf($w, "usage"); if (usage) w.usage = usage;
+            var strength = wf($w, "strength"); if (strength && strength !== "-" && num(strength) > 0) w.strength = strength;
+            var reach = wf($w, "reach"); if (reach && reach !== "-") w.reach = reach;
+            var parry = wf($w, "parry"); if (parry && parry !== "-") w.parry = parry;
+            var block = wf($w, "block"); if (block && block !== "-") w.block = block;
             var defs = buildDefaults($w); if (defs.length) w.defaults = defs;
             var c = weaponCalc($w); if (c) w.calc = c;
             ws.push(w);
@@ -942,15 +953,15 @@
         $container.children("ranged_weapon").each(function () {
             var $w = $(this);
             var w = { id: tid("W"), sv: 1 };
-            var dmg = parseDamage($w.children("damage").last().text()); if (dmg) w.damage = dmg;
-            var usage = $w.children("usage").text(); if (usage) w.usage = usage;
-            var strength = $w.children("strength").text(); if (strength && strength !== "-" && num(strength) > 0) w.strength = strength;
-            var accuracy = $w.children("accuracy").text(); if (accuracy) w.accuracy = accuracy;
-            var range = $w.children("range").text(); if (range) w.range = range;
-            var rof = $w.children("rate_of_fire").text(); if (rof) w.rate_of_fire = rof;
-            var shots = $w.children("shots").text(); if (shots) w.shots = shots;
-            var bulk = $w.children("bulk").text(); if (bulk) w.bulk = bulk;
-            var recoil = $w.children("recoil").text(); if (recoil) w.recoil = recoil;
+            var dmg = parseDamage(wf($w, "damage")); if (dmg) w.damage = dmg;
+            var usage = wf($w, "usage"); if (usage) w.usage = usage;
+            var strength = wf($w, "strength"); if (strength && strength !== "-" && num(strength) > 0) w.strength = strength;
+            var accuracy = wf($w, "accuracy"); if (accuracy) w.accuracy = accuracy;
+            var range = wf($w, "range"); if (range) w.range = range;
+            var rof = wf($w, "rate_of_fire"); if (rof) w.rate_of_fire = rof;
+            var shots = wf($w, "shots"); if (shots) w.shots = shots;
+            var bulk = wf($w, "bulk"); if (bulk) w.bulk = bulk;
+            var recoil = wf($w, "recoil"); if (recoil) w.recoil = recoil;
             var defs = buildDefaults($w); if (defs.length) w.defaults = defs;
             var c = weaponCalc($w); if (c) w.calc = c;
             ws.push(w);
@@ -1234,12 +1245,11 @@
             if (lwb) le.features = (le.features || []).concat(lwb);
             return le;
         }
-        var weightTxt = ($v.children("weight").text() || "").split('/')[0].trim();
         var eq = {
             id: tid(kind),
             description: cleanName(desc),
-            base_value: String(num($v.children("value").text())),
-            base_weight: weightTxt ? (/[a-zA-Zа-яА-Я]/.test(weightTxt) ? weightTxt : weightTxt + " lb") : "0 lb",
+            base_value: String(eqValue($v)),
+            base_weight: eqWeight($v) + " lb",
             quantity: num($v.children("quantity").text()) || 1
         };
         var ref = $v.children("reference").text(); if (ref) eq.reference = ref;
@@ -1318,13 +1328,8 @@
             (nodes || []).forEach(function (n) {
                 var bw = parseFloat(n.base_weight) || 0, bv = num(n.base_value) || 0, q = n.quantity || 1;
                 var child = n.children ? fixExt(n.children) : [0, 0];
-                var ow = bw * q, ov = bv * q;
-                var ew = ow + child[0], ev = ov + child[1];
-                var ownOnly = n.children && foundryItems();
-                if (n.calc) {
-                    n.calc.extended_weight = (ownOnly ? ow : ew) + " lb";
-                    n.calc.extended_value = ownOnly ? ov : ev;
-                }
+                var ew = round5(bw * q + child[0]), ev = round5(bv * q + child[1]);
+                if (n.calc) { n.calc.extended_weight = ew + " lb"; n.calc.extended_value = ev; }
                 tw += ew; tv += ev;
             });
             return [tw, tv];
@@ -1422,9 +1427,6 @@
     }, {
       id: DR_ID, default: false, recalc: false, label: DR_LABEL, hint: DR_HINT, link: 'https://discord.gg/JsAxE79pU9',
       apply: function () { return true; }, revert: function () { return true; }
-    }, {
-      id: FI_ID, default: false, recalc: false, label: FI_LABEL, hint: FI_HINT,
-      apply: function () { return true; }, revert: function () { return true; }
     }]
   });
 
@@ -1463,9 +1465,6 @@
     }
     if (!document.getElementById('gc-fixrow-' + DR_ID)) {
       $('#gc-fixrow-' + RUS_ID).after(subRow(DR_ID, DR_LABEL, DR_HINT, null, 'https://discord.gg/JsAxE79pU9'));
-    }
-    if (!document.getElementById('gc-fixrow-' + FI_ID)) {
-      $('#gc-fixrow-' + DR_ID).after(subRow(FI_ID, FI_LABEL, FI_HINT, null));
     }
   }
   injectSolo();
